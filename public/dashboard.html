@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Instructor Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f2f2f2;
+    }
+    input, select, button {
+      margin: 6px 0;
+      padding: 8px;
+      font-size: 16px;
+    }
+    #results, #studentTable {
+      margin-top: 20px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px 12px;
+      text-align: left;
+    }
+    th {
+      background-color: #e0e0e0;
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 Polling Dashboard</h1>
+
+  <label>Question:</label><br>
+  <input type="text" id="question" size="60"><br>
+
+  <label>Options:</label><br>
+  A: <input type="text" id="optA"> <br>
+  B: <input type="text" id="optB"> <br>
+  C: <input type="text" id="optC"> <br>
+  D: <input type="text" id="optD"> <br>
+
+  <label>Correct Option:</label>
+  <select id="correct">
+    <option value="A">A</option>
+    <option value="B">B</option>
+    <option value="C">C</option>
+    <option value="D">D</option>
+  </select><br>
+
+  <label>Poll Duration (seconds):</label><br>
+  <input type="number" id="duration" value="30" min="10"><br>
+
+  <button onclick="logoutAll()">Logout All Devices</button>
+
+  <button onclick="startPoll()">🚀 Start Poll</button>
+  <div id="pollStatus"></div>
+
+  <h2>Live Results</h2>
+  <div id="results">Waiting for votes...</div>
+
+  <h2>Student Responses</h2>
+  <div id="studentTable"></div>
+
+  <button onclick="downloadCSV()">📥 Export as CSV</button>
+
+  <script>
+    const server = "http://localhost:3000";
+	
+	function logoutAll() {
+  fetch(server + "/logout_all", { method: "POST" })
+    .then(res => res.json())
+    .then(() => alert("✅ All devices will be logged out"));
+}
+
+
+    function startPoll() {
+      const question = document.getElementById("question").value;
+      const options = {
+        A: document.getElementById("optA").value,
+        B: document.getElementById("optB").value,
+        C: document.getElementById("optC").value,
+        D: document.getElementById("optD").value
+      };
+      const correct = document.getElementById("correct").value;
+      const duration = document.getElementById("duration").value;
+
+      fetch(`${server}/start_poll`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, options, correct, duration })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById("pollStatus").innerHTML = "<b style='color:green;'>✅ Poll started!</b>";
+        } else {
+          document.getElementById("pollStatus").innerHTML = "<b style='color:red;'>❌ Failed to start poll</b>";
+        }
+      });
+    }
+
+    function fetchResults() {
+      fetch(`${server}/results`)
+        .then(res => res.json())
+        .then(data => {
+          const summary = data.summary;
+          const details = data.details;
+
+          let summaryHTML = "";
+          for (let option in summary) {
+            summaryHTML += `<div><b>${option}</b>: ${summary[option]} votes</div>`;
+          }
+          document.getElementById("results").innerHTML = summaryHTML || "No votes yet.";
+
+          // Student response table
+          let table = `<table>
+            <tr><th>Roll No</th><th>Name</th><th>Vote</th><th>Correct?</th></tr>`;
+          for (let s of details) {
+            const icon = s.correct ? "✅" : "❌";
+            table += `<tr><td>${s.rollNo}</td><td>${s.name}</td><td>${s.vote}</td><td>${icon}</td></tr>`;
+          }
+          table += "</table>";
+          document.getElementById("studentTable").innerHTML = table;
+        });
+    }
+
+    function downloadCSV() {
+      window.open(`${server}/export`, "_blank");
+    }
+
+    setInterval(fetchResults, 3000); // update every 3 sec
+setInterval(() => {
+  fetch(`${server}/poll`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.active) {
+        document.title = `⏳ ${data.timeLeft}s left - ${data.question}`;
+      } else {
+        document.title = "✅ Poll Ended";
+      }
+    });
+}, 1000);
+
+  </script>
+</body>
+</html>
