@@ -35,12 +35,16 @@ app.post('/validate', (req, res) => {
   if (student) {
     return res.json({ success: true, ...student });
   } else {
-    return res.json({ success: false });
+    return res.status(404).json({ success: false, message: "Invalid code" });
   }
 });
 
 // 🟢 Start Poll
 app.post('/start_poll', (req, res) => {
+  if (currentPoll && Date.now() < pollEndTime) {
+    return res.status(400).json({ success: false, message: 'A poll is already active.' });
+  }
+
   const { question, options, correct, duration } = req.body;
   
   if (!question || !options || !correct || !duration || duration <= 0) {
@@ -109,11 +113,15 @@ app.post('/vote', (req, res) => {
   const { rollNo, vote } = req.body;
 
   if (!currentPoll || !currentPoll.correct || Date.now() > pollEndTime) {
-    return res.json({ success: false, message: "Poll has ended" });
+    return res.status(400).json({ success: false, message: "Poll has ended" });
+  }
+
+  if (votes[rollNo]) {
+    return res.status(400).json({ success: false, message: "You have already voted." });
   }
 
   if (!rollNo || !vote || !['A', 'B', 'C', 'D'].includes(vote)) {
-    return res.json({ success: false, message: "Invalid vote data" });
+    return res.status(400).json({ success: false, message: "Invalid vote data" });
   }
 
   votes[rollNo] = vote;
@@ -170,21 +178,35 @@ app.get('/results', (req, res) => {
 });
 
 // 📤 Export to CSV
-app.get('/export', (req, res) => {
+app.get('/export', (req, res, next) => {
   if (!currentPoll) return res.status(400).send("No poll");
 
-  let csv = "Roll No,Name,Vote,Correct\n";
-  for (const [rollNo, vote] of Object.entries(votes)) {
-    const student = students[rollNo];
-    const name = student?.name || "Unknown";
-    const isCorrect = vote === currentPoll.correct ? "✅" : "❌";
-    csv += `${rollNo},${name},${vote},${isCorrect}\n`;
+  try {
+    let csv = "Roll No,Name,Vote,Correct\n";
+    for (const [rollNo, vote] of Object.entries(votes)) {
+        const student = Object.values(students).find(s => s.rollNo === rollNo);
+        const name = student?.name || "Unknown";
+        const isCorrect = vote === currentPoll.correct ? "✅" : "❌";
+        csv += `${rollNo},${name},${vote},${isCorrect}\n`;
+    }
+
+    const filePath = __dirname + "/poll_results.csv";
+    fs.writeFileSync(filePath, csv);
+
+    res.download(filePath, (err) => {
+      if (err) {
+        next(err);
+      }
+    });
+  } catch (error) {
+    next(error);
   }
+});
 
-  const filePath = __dirname + "/poll_results.csv";
-  fs.writeFileSync(filePath, csv);
-
-  res.download(filePath);
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
 });
 
 app.listen(PORT, () => {
