@@ -61,7 +61,7 @@ const studentSchema = new mongoose.Schema({
     type: String,
     required: true,
     uppercase: true,
-    enum: ['BB', 'CH', 'CI', 'AI', 'CS', 'CY', 'DS', 'EE', 'ME', 'PH']
+    enum: ['AI', 'BB', 'CH', 'CI', 'CS', 'CY', 'DS', 'EE', 'ME', 'MT', 'PH']
   },
   
   // Language of Instruction
