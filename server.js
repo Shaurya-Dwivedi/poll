@@ -3,12 +3,17 @@ let globalLogout = false;
 
 let logoutAll = false;
 
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const connectDB = require('./config/database');
 
 const app = express();
+
+// Connect to MongoDB
+connectDB();
 
 // CORS configuration - allow all origins for now (you can restrict later)
 app.use(cors({
@@ -248,6 +253,9 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
+  console.log(`\n${'='.repeat(50)}`);
   console.log(`🟢 Server live at http://localhost:${PORT}`);
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`⏰ Started at: ${new Date().toLocaleString()}`);
+  console.log(`${'='.repeat(50)}\n`);
 });
