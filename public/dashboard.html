@@ -62,7 +62,10 @@
             </div>
             <div class="d-flex justify-content-between mt-4">
                 <button class="btn btn-danger" onclick="logoutAll()">Logout All Devices</button>
-                <button class="btn btn-primary" onclick="startPoll()">🚀 Start Poll</button>
+                <div>
+                  <button class="btn btn-warning me-2" id="endPollBtn" onclick="endPoll()" style="display: none;">⏹️ End Poll</button>
+                  <button class="btn btn-primary" id="startPollBtn" onclick="startPoll()">🚀 Start Poll</button>
+                </div>
             </div>
             <div id="pollStatus" class="mt-3"></div>
           </div>
@@ -109,6 +112,11 @@
       const correct = document.getElementById("correct").value;
       const duration = document.getElementById("duration").value;
 
+      if (!question || !options.A || !options.B || !options.C || !options.D) {
+        document.getElementById("pollStatus").innerHTML = "<div class='alert alert-warning'>⚠️ Please fill all fields</div>";
+        return;
+      }
+
       fetch(`${server}/start_poll`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -118,8 +126,31 @@
       .then(data => {
         if (data.success) {
           document.getElementById("pollStatus").innerHTML = "<div class='alert alert-success'>✅ Poll started!</div>";
+          document.getElementById("startPollBtn").disabled = true;
+          document.getElementById("endPollBtn").style.display = "inline-block";
         } else {
-          document.getElementById("pollStatus").innerHTML = "<div class='alert alert-danger'>❌ Failed to start poll</div>";
+          document.getElementById("pollStatus").innerHTML = "<div class='alert alert-danger'>❌ " + (data.message || "Failed to start poll") + "</div>";
+        }
+      });
+    }
+
+    function endPoll() {
+      if (!confirm("Are you sure you want to end this poll now? Students won't be able to vote anymore.")) {
+        return;
+      }
+
+      fetch(`${server}/end_poll`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById("pollStatus").innerHTML = "<div class='alert alert-info'>🔴 Poll ended manually</div>";
+          document.getElementById("startPollBtn").disabled = false;
+          document.getElementById("endPollBtn").style.display = "none";
+        } else {
+          document.getElementById("pollStatus").innerHTML = "<div class='alert alert-danger'>❌ " + (data.message || "Failed to end poll") + "</div>";
         }
       });
     }
@@ -162,9 +193,13 @@
           if (data.active) {
             document.title = `⏳ ${data.timeLeft}s left - ${data.question}`;
             document.getElementById("timer").innerHTML = `Time Left: <span class="badge bg-success">${data.timeLeft}s</span>`;
+            document.getElementById("endPollBtn").style.display = "inline-block";
+            document.getElementById("startPollBtn").disabled = true;
           } else {
             document.title = "✅ Poll Ended";
             document.getElementById("timer").innerHTML = '';
+            document.getElementById("endPollBtn").style.display = "none";
+            document.getElementById("startPollBtn").disabled = false;
           }
         });
     }, 1000);

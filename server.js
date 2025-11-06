@@ -77,6 +77,19 @@ app.post('/start_poll', (req, res) => {
   res.json({ success: true });
 });
 
+// 🔴 End Poll Manually
+app.post('/end_poll', (req, res) => {
+  if (!currentPoll) {
+    return res.status(400).json({ success: false, message: 'No active poll to end.' });
+  }
+
+  // Set poll end time to now to immediately end it
+  pollEndTime = Date.now();
+  
+  console.log("🔴 Poll ended manually by instructor");
+  res.json({ success: true, message: 'Poll ended successfully' });
+});
+
 // Instructor clicks "Logout All"
 app.post("/logout_all", (req, res) => {
   globalLogout = true;
