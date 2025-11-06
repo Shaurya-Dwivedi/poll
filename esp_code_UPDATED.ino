@@ -90,9 +90,30 @@ void setup() {
   lcd.print("Connecting WiFi     ");
 
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
     delay(500);
     Serial.print(".");
+    attempts++;
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\n✅ WiFi Connected!");
+    Serial.print("📶 IP Address: ");
+    Serial.println(WiFi.localIP());
+    Serial.print("🌐 Server: ");
+    Serial.println(server);
+    
+    lcd.clear();
+    lcd.print("WiFi Connected!");
+    delay(1500);
+  } else {
+    Serial.println("\n❌ WiFi Connection Failed!");
+    lcd.clear();
+    lcd.print("WiFi Failed!");
+    lcd.setCursor(0, 1);
+    lcd.print("Check Config");
+    delay(3000);
   }
 
   lcd.clear();
@@ -207,12 +228,19 @@ void validateCode() {
   http.begin(server + "/validate");
   http.addHeader("Content-Type", "application/json");
   String payload = "{\"code\":\"" + code + "\"}";
+  
+  Serial.println("🔍 Validating code: " + code);
+  
   int httpCode = http.POST(payload);
   if (httpCode > 0) {
     String response = http.getString();
+    Serial.println("📥 Response: " + response);
+    
     if (response.indexOf("success\":true") != -1) {
       studentRoll = extract(response, "rollNo");
       String name = extract(response, "name");
+
+      Serial.println("✅ Login successful: " + studentRoll + " - " + name);
 
       lcd.clear();
       lcd.setCursor(0, 0);
@@ -225,10 +253,18 @@ void validateCode() {
       voteSent = false;
       selectedVote = '\0';
     } else {
+      Serial.println("❌ Invalid code");
       lcd.clear();
       lcd.print("Invalid Code          ");
       delay(2000);
     }
+  } else {
+    Serial.println("❌ HTTP Error: " + String(httpCode));
+    lcd.clear();
+    lcd.print("Server Error");
+    lcd.setCursor(0, 1);
+    lcd.print("Code: " + String(httpCode));
+    delay(2000);
   }
   http.end();
   code = "";
@@ -268,6 +304,8 @@ void checkPollStatus() {
       lcd.clear();
       lcd.print("Waiting Poll...     ");
     }
+  } else {
+    Serial.println("❌ Poll check error: " + String(httpCode));
   }
   http.end();
 }
@@ -326,12 +364,12 @@ void sendVote(char vote) {
   http.addHeader("Content-Type", "application/json");
 
   String json = "{\"rollNo\":\"" + studentRoll + "\",\"vote\":\"" + String(vote) + "\"}";
-  Serial.println("Sending Vote: " + json);
+  Serial.println("🗳️ Sending Vote: " + json);
 
   int httpCode = http.POST(json);
   if (httpCode > 0) {
     String response = http.getString();
-    Serial.println("Vote Response: " + response);
+    Serial.println("📥 Vote Response: " + response);
 
     lcd.clear();
     lcd.setCursor(0, 0);
@@ -346,6 +384,7 @@ void sendVote(char vote) {
     voteSent = true;
     inVoting = false;
   } else {
+    Serial.println("❌ Vote Error: " + String(httpCode));
     lcd.clear();
     lcd.print("Vote Error!                ");
   }
@@ -359,7 +398,7 @@ void fetchResult() {
   int code = http.GET();
   if (code > 0) {
     String response = http.getString();
-    Serial.println("Result: " + response);
+    Serial.println("📊 Result: " + response);
 
     if (response.indexOf("\"ready\":true") != -1) {
       bool isCorrect = response.indexOf("\"isCorrect\":true") != -1;
@@ -374,6 +413,7 @@ void fetchResult() {
       lcd.clear();
 
       if (isCorrect) {
+        Serial.println("✅ CORRECT ANSWER!");
         lcd.setCursor(0, 0);
         lcd.print("CORRECT :)         ");
         lcd.setCursor(0, 1);
@@ -387,6 +427,7 @@ void fetchResult() {
           delay(500);
         }
       } else {
+        Serial.println("❌ WRONG ANSWER - Correct: " + correct);
         lcd.setCursor(0, 0);
         lcd.print("WRONG :(           ");
         lcd.setCursor(0, 1);
@@ -419,6 +460,8 @@ void fetchResult() {
 
       showResult = true;
     }
+  } else {
+    Serial.println("❌ Result fetch error: " + String(code));
   }
   http.end();
 }

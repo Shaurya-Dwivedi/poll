@@ -6,10 +6,21 @@ let logoutAll = false;
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
+const path = require('path');
 
 const app = express();
-app.use(cors());
+
+// CORS configuration - allow all origins for now (you can restrict later)
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
+
 app.use(express.json());
+
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 const PORT = process.env.PORT || 3000;
 
@@ -209,6 +220,21 @@ app.use((err, req, res, next) => {
   res.status(500).send('Something broke!');
 });
 
-app.listen(PORT, () => {
+// Health check endpoint for Render
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🟢 Server live at http://localhost:${PORT}`);
+  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
