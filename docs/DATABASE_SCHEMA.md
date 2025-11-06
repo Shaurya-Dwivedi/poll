@@ -65,13 +65,13 @@ Complete database schema for the Polling-Meter project.
 
 ---
 
-## 📋 Planned Schema (TODO)
+## 📋 Implemented Schema (Ready to Use)
 
-### Poll Model ⏳
+### Poll Model ✅
 
 **Collection**: `polls`
-**File**: `server/models/Poll.js` (to be created)
-**Status**: Not implemented (currently in-memory)
+**File**: `server/models/Poll.js`
+**Status**: Implemented, endpoints need migration
 
 ```javascript
 {
@@ -118,11 +118,11 @@ Complete database schema for the Polling-Meter project.
 - `getResults()` - Calculate vote counts
 - `findActivePolls()` - Static method
 
-### Attendance Model ⏳
+### Attendance Model ✅
 
 **Collection**: `attendances`
-**File**: `server/models/Attendance.js` (to be created)
-**Status**: Not implemented yet
+**File**: `server/models/Attendance.js`
+**Status**: Implemented, endpoints not yet created
 
 ```javascript
 {
@@ -160,10 +160,11 @@ Complete database schema for the Polling-Meter project.
 - `getAbsentees()` - Calculate who's absent
 - `findActiveAttendance()` - Static method
 
-### User/Instructor Model ⏳
+### User/Instructor Model ✅
 
-**Collection**: `users` or `instructors`
-**Status**: Future enhancement (currently using localStorage)
+**Collection**: `users`
+**File**: `server/models/User.js`
+**Status**: Fully implemented and integrated
 
 ```javascript
 {
@@ -390,5 +391,5 @@ const absentees = await attendance.getAbsentees();
 
 ---
 
-**Last Updated**: After completing Student model and seeding
-**Next**: Create Poll model (Task 0.5)
+**Last Updated**: After completing all 4 models (Student, Poll, Attendance, User)
+**Next**: Migrate poll endpoints to use Poll model (Task 0.8)
