@@ -29,6 +29,9 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 const PORT = process.env.PORT || 3000;
 
+// Import models
+const Student = require('./models/Student');
+
 
 // ✅ Student DB
 const students = {
@@ -250,6 +253,111 @@ app.get('/health', (req, res) => {
 // Root endpoint
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../public', 'index.html'));
+});
+
+// 🔍 Search Students Endpoint
+app.get('/search_students', async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query || query.trim().length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Search query is required' 
+      });
+    }
+
+    const searchTerm = query.trim();
+
+    // Search by roll number (exact match) or name (partial match, case-insensitive)
+    const students = await Student.find({
+      $or: [
+        { rollNo: { $regex: searchTerm, $options: 'i' } },
+        { name: { $regex: searchTerm, $options: 'i' } },
+        { email: { $regex: searchTerm, $options: 'i' } }
+      ],
+      isActive: true
+    })
+    .select('sn name rollNo email section subGroup branch language deviceCode')
+    .limit(20)  // Limit results to 20
+    .sort({ rollNo: 1 });
+
+    res.json({
+      success: true,
+      count: students.length,
+      students: students
+    });
+
+  } catch (error) {
+    console.error('❌ Search error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error searching students',
+      error: error.message 
+    });
+  }
+});
+
+// 🔍 Get All Students (with pagination)
+app.get('/all_students', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const skip = (page - 1) * limit;
+
+    const total = await Student.countDocuments({ isActive: true });
+    const students = await Student.find({ isActive: true })
+      .select('sn name rollNo email section subGroup branch language deviceCode')
+      .skip(skip)
+      .limit(limit)
+      .sort({ rollNo: 1 });
+
+    res.json({
+      success: true,
+      page: page,
+      limit: limit,
+      total: total,
+      pages: Math.ceil(total / limit),
+      students: students
+    });
+
+  } catch (error) {
+    console.error('❌ Get all students error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching students',
+      error: error.message 
+    });
+  }
+});
+
+// 🔍 Get Student by Roll Number
+app.get('/student/:rollNo', async (req, res) => {
+  try {
+    const { rollNo } = req.params;
+    
+    const student = await Student.findByRollNo(rollNo);
+    
+    if (!student) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Student not found' 
+      });
+    }
+
+    res.json({
+      success: true,
+      student: student
+    });
+
+  } catch (error) {
+    console.error('❌ Get student error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching student',
+      error: error.message 
+    });
+  }
 });
 
 app.listen(PORT, '0.0.0.0', () => {

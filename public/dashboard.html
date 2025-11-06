@@ -155,6 +155,91 @@
       });
     }
 
+    // Student Search Functions
+    let searchTimeout;
+    function searchStudents() {
+      clearTimeout(searchTimeout);
+      const query = document.getElementById("studentSearch").value.trim();
+      
+      if (query.length < 2) {
+        document.getElementById("searchResults").innerHTML = "";
+        return;
+      }
+
+      searchTimeout = setTimeout(() => {
+        fetch(`${server}/search_students?query=${encodeURIComponent(query)}`)
+          .then(res => res.json())
+          .then(data => {
+            displaySearchResults(data);
+          })
+          .catch(error => {
+            console.error("Search error:", error);
+            document.getElementById("searchResults").innerHTML = "<div class='alert alert-danger'>Error searching students</div>";
+          });
+      }, 300); // Debounce 300ms
+    }
+
+    function loadAllStudents() {
+      document.getElementById("searchResults").innerHTML = "<div class='text-center'><div class='spinner-border' role='status'></div><p>Loading all students...</p></div>";
+      
+      fetch(`${server}/all_students?limit=100`)
+        .then(res => res.json())
+        .then(data => {
+          displaySearchResults(data);
+        })
+        .catch(error => {
+          console.error("Load error:", error);
+          document.getElementById("searchResults").innerHTML = "<div class='alert alert-danger'>Error loading students</div>";
+        });
+    }
+
+    function displaySearchResults(data) {
+      const resultsDiv = document.getElementById("searchResults");
+      
+      if (!data.success || data.students.length === 0) {
+        resultsDiv.innerHTML = "<div class='alert alert-warning'>No students found</div>";
+        return;
+      }
+
+      let html = `<div class="alert alert-info">Found ${data.count || data.students.length} student(s)`;
+      if (data.total) {
+        html += ` (Page ${data.page}/${data.pages}, Total: ${data.total})`;
+      }
+      html += `</div>`;
+      
+      html += `<div class="table-responsive"><table class="table table-striped table-hover table-sm">
+        <thead>
+          <tr>
+            <th>SN</th>
+            <th>Roll No</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Section</th>
+            <th>Group</th>
+            <th>Branch</th>
+            <th>Device Code</th>
+          </tr>
+        </thead>
+        <tbody>`;
+      
+      data.students.forEach(student => {
+        html += `<tr>
+          <td>${student.sn}</td>
+          <td><strong>${student.rollNo}</strong></td>
+          <td>${student.name}</td>
+          <td><small>${student.email}</small></td>
+          <td>${student.section}</td>
+          <td>${student.subGroup}</td>
+          <td><span class="badge bg-primary">${student.branch}</span></td>
+          <td><code>${student.deviceCode || 'N/A'}</code></td>
+        </tr>`;
+      });
+      
+      html += `</tbody></table></div>`;
+      
+      resultsDiv.innerHTML = html;
+    }
+
     function fetchResults() {
       fetch(`${server}/results`)
         .then(res => res.json())
