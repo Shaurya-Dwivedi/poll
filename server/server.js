@@ -3,7 +3,7 @@ let globalLogout = false;
 
 let logoutAll = false;
 
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
@@ -25,7 +25,7 @@ app.use(cors({
 app.use(express.json());
 
 // Serve static files from public directory
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '../public')));
 
 const PORT = process.env.PORT || 3000;
 
@@ -249,7 +249,7 @@ app.get('/health', (req, res) => {
 
 // Root endpoint
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, '../public', 'index.html'));
 });
 
 app.listen(PORT, '0.0.0.0', () => {
