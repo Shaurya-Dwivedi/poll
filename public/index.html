@@ -99,50 +99,97 @@
         </div>
         <div id="registerForm">
             <h2>Create Account</h2>
-            <input type="text" id="regUsername" placeholder="Username">
-            <input type="password" id="regPassword" placeholder="Password">
-            <input type="text" id="regName" placeholder="Full Name">
-            <input type="text" id="regPosition" placeholder="Work/Position">
-            <input type="text" id="masterCode" placeholder="Master Code">
+            <input type="text" id="regUsername" placeholder="Username (min 3 chars)" required>
+            <input type="password" id="regPassword" placeholder="Password (min 6 chars)" required>
+            <input type="text" id="regName" placeholder="Full Name" required>
+            <input type="text" id="regPosition" placeholder="Position/Department (optional)">
+            <input type="text" id="masterCode" placeholder="Master Code" required>
             <button onclick="register()">Register</button>
             <button class="toggle-btn" onclick="showLogin()">Back to Login</button>
         </div>
     </div>
 
     <script>
-        const MASTER_CODE = "XAI2025";
-        let users = JSON.parse(localStorage.getItem('users')) || {};
+        const server = window.location.origin;
 
-        function login() {
-            const username = document.getElementById('loginUsername').value;
+        async function login() {
+            const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value;
-            if(users[username] && users[username].password === password) {
-                localStorage.setItem('currentUser', username);
-                window.location.href = 'dashboard.html';
-            } else {
-                alert('Invalid credentials');
+
+            if (!username || !password) {
+                alert('❌ Please fill all fields!');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${server}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    localStorage.setItem('loggedInUser', JSON.stringify(data.user));
+                    alert('✅ Login Successful!');
+                    window.location.href = 'dashboard.html';
+                } else {
+                    alert('❌ ' + data.message);
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('❌ Login failed. Please try again.');
             }
         }
 
-        function register() {
-            const username = document.getElementById('regUsername').value;
+        async function register() {
+            const username = document.getElementById('regUsername').value.trim();
             const password = document.getElementById('regPassword').value;
-            const name = document.getElementById('regName').value;
-            const position = document.getElementById('regPosition').value;
-            const masterCode = document.getElementById('masterCode').value;
+            const name = document.getElementById('regName').value.trim();
+            const position = document.getElementById('regPosition').value.trim();
+            const masterCode = document.getElementById('masterCode').value.trim();
+            const email = `${username}@iitj.ac.in`; // Default email format
 
-            if(masterCode !== MASTER_CODE) {
-                alert('Invalid master code');
+            if (!username || !password || !name || !masterCode) {
+                alert('❌ Please fill all required fields!');
                 return;
             }
-            if(users[username]) {
-                alert('Username already exists');
+
+            if (username.length < 3) {
+                alert('❌ Username must be at least 3 characters!');
                 return;
             }
-            users[username] = { password, name, position };
-            localStorage.setItem('users', JSON.stringify(users));
-            alert('Registration successful! Please login.');
-            showLogin();
+
+            if (password.length < 6) {
+                alert('❌ Password must be at least 6 characters!');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${server}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, name, email, masterCode })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ Registration Successful! You can now log in.');
+                    document.getElementById('regUsername').value = '';
+                    document.getElementById('regPassword').value = '';
+                    document.getElementById('regName').value = '';
+                    document.getElementById('regPosition').value = '';
+                    document.getElementById('masterCode').value = '';
+                    showLogin();
+                } else {
+                    alert('❌ ' + data.message);
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                alert('❌ Registration failed. Please try again.');
+            }
         }
 
         function showRegister() {

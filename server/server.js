@@ -31,6 +31,7 @@ const PORT = process.env.PORT || 3000;
 
 // Import models
 const Student = require('./models/Student');
+const User = require('./models/User');
 
 
 // ✅ Student DB
@@ -253,6 +254,110 @@ app.get('/health', (req, res) => {
 // Root endpoint
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../public', 'index.html'));
+});
+
+// 👤 User Authentication Endpoints
+
+// Register new instructor
+app.post('/register', async (req, res) => {
+  try {
+    const { username, password, name, email, masterCode } = req.body;
+
+    if (!username || !password || !name || !email || !masterCode) {
+      return res.status(400).json({
+        success: false,
+        message: 'All fields are required'
+      });
+    }
+
+    const user = await User.register({ username, password, name, email, masterCode });
+
+    res.json({
+      success: true,
+      message: 'Registration successful',
+      user: user.getPublicProfile()
+    });
+
+  } catch (error) {
+    console.error('❌ Registration error:', error.message);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Login
+app.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username and password are required'
+      });
+    }
+
+    const user = await User.authenticate(username, password);
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      user: user.getPublicProfile()
+    });
+
+  } catch (error) {
+    console.error('❌ Login error:', error.message);
+    res.status(401).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Check if username exists
+app.get('/check_username/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const user = await User.findByUsername(username);
+
+    res.json({
+      exists: !!user
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error checking username'
+    });
+  }
+});
+
+// Get user profile
+app.get('/profile/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const user = await User.findByUsername(username);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      user: user.getPublicProfile()
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching profile'
+    });
+  }
 });
 
 // 🔍 Search Students Endpoint
