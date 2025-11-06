@@ -12,7 +12,7 @@ const char* password = "YOUR_WIFI_PASSWORD";
 
 // Server URL - Replace with your Render deployment URL
 // Format: https://your-app-name.onrender.com (NO trailing slash!)
-const String server = "https://your-app-name.onrender.com";
+const String server = "https://poll-z8ll.onrender.com";
 
 // ========================================
 // END CONFIGURATION
