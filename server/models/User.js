@@ -203,7 +203,7 @@ userSchema.statics.register = async function(userData) {
   const { username, password, name, email, masterCode } = userData;
 
   // Validate master code
-  const validMasterCode = process.env.MASTER_CODE || 'XAI2025';
+  const validMasterCode = process.env.MASTER_CODE || 'IITJPM2025';
   if (masterCode !== validMasterCode) {
     throw new Error('Invalid master code');
   }

@@ -102,7 +102,7 @@ Your web interface is now live at:
 - **Dashboard**: `https://your-render-url.onrender.com/dashboard.html`
 
 **Default Credentials:**
-- Master registration code: `XAI2025`
+- Master registration code: `IITJPM2025`
 
 ---
 
@@ -116,7 +116,7 @@ Should return: `{"status":"ok",...}`
 
 ### Test 2: Web Interface
 1. Visit your Render URL
-2. Register with master code: `XAI2025`
+2. Register with master code: `IITJPM2025`
 3. Login
 4. Create a test poll
 

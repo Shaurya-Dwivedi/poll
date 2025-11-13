@@ -73,7 +73,7 @@ Visit: `https://your-url.onrender.com/`
 Should see: Login page
 
 ### Test 3: Dashboard
-1. Register with master code: `XAI2025`
+1. Register with master code: `IITJPM2025`
 2. Login and create a poll
 3. Visit: `https://your-url.onrender.com/dashboard.html`
 
@@ -95,7 +95,7 @@ Should see: Login page
 - `ABCDDD` → Kunal Singh
 
 ### Instructor Access:
-- Create account with master code: `XAI2025`
+- Create account with master code: `IITJPM2025`
 
 ---
 

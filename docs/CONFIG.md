@@ -43,7 +43,7 @@ Add your own students here!
 
 **Line 112:** Master registration code
 ```javascript
-const MASTER_CODE = "XAI2025";  // Change this to your own secret code
+const MASTER_CODE = "IITJPM2025";  // Change this to your own secret code
 ```
 
 ## 🔗 Your Deployment URLs
@@ -82,7 +82,7 @@ GET  /should_logout       - Check logout status
 - `ABCDDD` - Kunal Singh
 
 ### Instructor Login:
-- Create new account with master code: `XAI2025`
+- Create new account with master code: `IITJPM2025`
 
 ## 🔐 Security Notes
 
