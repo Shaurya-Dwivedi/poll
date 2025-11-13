@@ -136,6 +136,7 @@
 
     // Use relative URLs when hosted on same domain, or set full URL for separate hosting
     const server = window.location.origin;
+    let currentPollId = null; // Track the current active poll
 
     function logoutAll() {
       fetch(server + "/logout_all", { method: "POST" })
@@ -167,6 +168,7 @@
       .then(res => res.json())
       .then(data => {
         if (data.success) {
+          currentPollId = data.pollId; // Store the poll ID
           document.getElementById("pollStatus").innerHTML = "<div class='alert alert-success'>✅ Poll started!</div>";
           document.getElementById("startPollBtn").disabled = true;
           document.getElementById("endPollBtn").style.display = "inline-block";
@@ -188,6 +190,7 @@
       .then(res => res.json())
       .then(data => {
         if (data.success) {
+          currentPollId = null; // Clear the poll ID
           document.getElementById("pollStatus").innerHTML = "<div class='alert alert-info'>🔴 Poll ended manually</div>";
           document.getElementById("startPollBtn").disabled = false;
           document.getElementById("endPollBtn").style.display = "none";
@@ -283,9 +286,21 @@
     }
 
     function fetchResults() {
+      // Fetch results - the endpoint now only returns active poll results
       fetch(`${server}/results`)
         .then(res => res.json())
         .then(data => {
+          if (!data.active) {
+            // No active poll - clear the results display
+            currentPollId = null;
+            document.getElementById("results").innerHTML = "<div class='alert alert-info'>No active poll. Start a new poll to see results.</div>";
+            document.getElementById("studentTable").innerHTML = "";
+            return;
+          }
+          
+          // Update the current poll ID
+          currentPollId = data.pollId;
+          
           const summary = data.summary;
           const details = data.details;
 
@@ -305,6 +320,9 @@
           }
           table += "</tbody></table>";
           document.getElementById("studentTable").innerHTML = table;
+        })
+        .catch(error => {
+          console.error("Error fetching results:", error);
         });
     }
 

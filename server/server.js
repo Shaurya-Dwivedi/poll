@@ -261,11 +261,12 @@ app.get('/student_result', async (req, res) => {
 // 📊 Full Results
 app.get('/results', async (req, res) => {
   try {
-    // Get the most recent poll (active or completed)
-    const poll = await Poll.findOne().sort({ createdAt: -1 });
+    // Get the currently active poll only
+    const poll = await Poll.findActivePoll();
     
     if (!poll) {
       return res.json({
+        active: false,
         totalVotes: 0,
         question: "",
         correctAnswer: "",
@@ -278,6 +279,8 @@ app.get('/results', async (req, res) => {
     const results = poll.getResults();
 
     return res.json({
+      active: true,
+      pollId: poll._id,
       totalVotes: results.totalVotes,
       question: poll.question,
       correctAnswer: poll.correct,
@@ -287,6 +290,7 @@ app.get('/results', async (req, res) => {
   } catch (error) {
     console.error('❌ Results error:', error);
     res.status(500).json({ 
+      active: false,
       totalVotes: 0,
       question: "",
       correctAnswer: "",
