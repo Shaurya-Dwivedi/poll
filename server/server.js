@@ -429,6 +429,153 @@ app.get('/export_poll/:pollId', async (req, res, next) => {
   }
 });
 
+// 📜 Get Attendance History (all completed sessions)
+app.get('/attendance_history', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    const skip = parseInt(req.query.skip) || 0;
+    
+    // Get all attendance sessions sorted by most recent first
+    const sessions = await AttendanceSession.find()
+      .sort({ startTime: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await AttendanceSession.countDocuments();
+
+    const history = await Promise.all(sessions.map(async (session) => {
+      const stats = await session.getStatistics();
+      
+      return {
+        sessionId: session._id,
+        code: session.code,
+        section: session.section,
+        duration: session.duration,
+        active: session.active,
+        startTime: session.startTime,
+        endTime: session.endTime,
+        totalPresent: stats.totalPresent,
+        totalAbsent: stats.totalAbsent,
+        presentPercentage: stats.presentPercentage,
+        records: session.records.map(r => ({
+          rollNo: r.rollNo,
+          name: r.studentName,
+          markedAt: r.markedAt
+        }))
+      };
+    }));
+
+    res.json({
+      success: true,
+      total: total,
+      count: history.length,
+      sessions: history
+    });
+  } catch (error) {
+    console.error('❌ Attendance history error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching attendance history',
+      error: error.message
+    });
+  }
+});
+
+// 🗑️ Delete Attendance Session from History
+app.delete('/attendance/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    
+    const session = await AttendanceSession.findById(sessionId);
+    
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: 'Attendance session not found'
+      });
+    }
+
+    // Don't allow deleting active sessions
+    if (session.active) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete an active attendance session'
+      });
+    }
+
+    await AttendanceSession.findByIdAndDelete(sessionId);
+
+    res.json({
+      success: true,
+      message: 'Attendance session deleted successfully'
+    });
+  } catch (error) {
+    console.error('❌ Delete attendance error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting attendance session',
+      error: error.message
+    });
+  }
+});
+
+// 📤 Export Individual Attendance Session to CSV
+app.get('/export_attendance/:sessionId', async (req, res, next) => {
+  try {
+    const { sessionId } = req.params;
+    const session = await AttendanceSession.findById(sessionId);
+    
+    if (!session) {
+      return res.status(404).send("Attendance session not found");
+    }
+
+    // Get all students for this session's section
+    let query = {};
+    if (session.section && session.section !== "All") {
+      query.section = session.section;
+    }
+    const allStudents = await Student.find(query);
+
+    // Build CSV content
+    let csv = "Roll No,Name,Section,Status,Marked At\n";
+    
+    const presentRollNos = new Set(session.records.map(r => r.rollNo));
+    
+    // Present students
+    for (const record of session.records) {
+      csv += `${record.rollNo},${record.studentName},${record.section || 'N/A'},Present,${new Date(record.markedAt).toLocaleString()}\n`;
+    }
+    
+    // Absent students
+    for (const student of allStudents) {
+      if (!presentRollNos.has(student.rollNo)) {
+        csv += `${student.rollNo},${student.name},${student.section || 'N/A'},Absent,N/A\n`;
+      }
+    }
+
+    // Create temporary file
+    const timestamp = new Date(session.startTime).toISOString().replace(/[:.]/g, '-');
+    const fileName = `attendance_${sessionId}_${timestamp}.csv`;
+    const filePath = path.join(__dirname, fileName);
+    
+    fs.writeFileSync(filePath, csv);
+
+    res.download(filePath, fileName, (err) => {
+      // Clean up the file after download
+      fs.unlink(filePath, (unlinkErr) => {
+        if (unlinkErr) console.error('Error deleting temp file:', unlinkErr);
+      });
+      
+      if (err) {
+        next(err);
+      }
+    });
+  } catch (error) {
+    console.error('❌ Export attendance session error:', error);
+    next(error);
+  }
+});
+
 // 📤 Export to CSV
 app.get('/export', async (req, res, next) => {
   try {
