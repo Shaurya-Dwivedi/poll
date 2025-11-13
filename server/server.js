@@ -543,18 +543,22 @@ app.get('/attendance_results', async (req, res) => {
     const stats = session.getStatistics();
 
     res.json({
+      success: true,
       active: session.active,
       sessionId: session._id,
       code: session.code,
       duration: session.duration,
       startTime: session.startTime,
       endTime: session.endTime,
-      totalPresent: stats.totalPresent,
-      totalAbsent: stats.totalAbsent,
-      presentPercentage: stats.presentPercentage,
+      summary: {
+        present: stats.totalPresent,
+        totalStudents: stats.totalPresent + stats.totalAbsent,
+        absent: stats.totalAbsent,
+        presentPercentage: stats.presentPercentage
+      },
       records: session.records.map(r => ({
         rollNo: r.rollNo,
-        studentName: r.studentName,
+        name: r.studentName,
         markedAt: r.markedAt
       }))
     });

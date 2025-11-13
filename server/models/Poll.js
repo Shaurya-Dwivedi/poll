@@ -259,10 +259,19 @@ pollSchema.methods.endPoll = async function() {
 // Static Methods
 
 /**
- * Find active poll
+ * Find active poll (only if not expired)
  */
-pollSchema.statics.findActivePoll = function() {
-  return this.findOne({ active: true });
+pollSchema.statics.findActivePoll = async function() {
+  const poll = await this.findOne({ active: true });
+  
+  // If poll exists and is expired, end it automatically
+  if (poll && poll.isExpired()) {
+    poll.active = false;
+    await poll.save();
+    return null;
+  }
+  
+  return poll;
 };
 
 /**

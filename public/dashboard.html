@@ -6,47 +6,12 @@
   <style>
     body {
       background-color: #f8f9fa;
-      transition: background-color 0.3s, color 0.3s;
     }
     .container {
       margin-top: 20px;
     }
     .card {
       margin-bottom: 20px;
-    }
-    
-    /* Dark Mode Styles */
-    @media (prefers-color-scheme: dark) {
-      body {
-        background-color: #212529;
-        color: #f8f9fa;
-      }
-      .card {
-        background-color: #343a40;
-        color: #f8f9fa;
-        border-color: #495057;
-      }
-      .form-control, .form-select {
-        background-color: #495057;
-        color: #f8f9fa;
-        border-color: #6c757d;
-      }
-      .form-control:focus, .form-select:focus {
-        background-color: #495057;
-        color: #f8f9fa;
-        border-color: #0d6efd;
-      }
-      .table {
-        color: #f8f9fa;
-      }
-      .table-striped > tbody > tr:nth-of-type(odd) > * {
-        background-color: #495057;
-      }
-      .input-group-text {
-        background-color: #495057;
-        color: #f8f9fa;
-        border-color: #6c757d;
-      }
     }
   </style>
 </head>
@@ -438,12 +403,12 @@
         .then(res => res.json())
         .then(data => {
           if (data.active) {
-            document.title = `⏳ ${data.timeLeft}s left - ${data.question}`;
+            document.title = `${data.timeLeft}s left - ${data.question}`;
             document.getElementById("timer").innerHTML = `Time Left: <span class="badge bg-success">${data.timeLeft}s</span>`;
             document.getElementById("endPollBtn").style.display = "inline-block";
             document.getElementById("startPollBtn").disabled = true;
           } else {
-            document.title = "✅ Poll Ended";
+            document.title = "Poll Ended";
             document.getElementById("timer").innerHTML = '';
             document.getElementById("endPollBtn").style.display = "none";
             document.getElementById("startPollBtn").disabled = false;
@@ -462,7 +427,7 @@
 
       if (!duration || duration < 1 || duration > 60) {
         document.getElementById("attendanceStatus").innerHTML = 
-          "<div class='alert alert-warning'>⚠️ Please enter a valid duration (1-60 minutes)</div>";
+          "<div class='alert alert-warning'>Please enter a valid duration (1-60 minutes)</div>";
         return;
       }
 
@@ -475,7 +440,7 @@
       .then(data => {
         if (data.success) {
           document.getElementById("attendanceStatus").innerHTML = 
-            "<div class='alert alert-success'>✅ Attendance session started!</div>";
+            "<div class='alert alert-success'>Attendance session started!</div>";
           
           // Display the code
           document.getElementById("attendanceCode").textContent = data.code;
@@ -490,13 +455,13 @@
           startAttendancePolling();
         } else {
           document.getElementById("attendanceStatus").innerHTML = 
-            "<div class='alert alert-danger'>❌ " + (data.message || "Failed to start attendance") + "</div>";
+            "<div class='alert alert-danger'>" + (data.message || "Failed to start attendance") + "</div>";
         }
       })
       .catch(error => {
         console.error("Error starting attendance:", error);
         document.getElementById("attendanceStatus").innerHTML = 
-          "<div class='alert alert-danger'>❌ Error starting attendance</div>";
+          "<div class='alert alert-danger'>Error starting attendance</div>";
       });
     }
 
@@ -513,7 +478,7 @@
       .then(data => {
         if (data.success) {
           document.getElementById("attendanceStatus").innerHTML = 
-            "<div class='alert alert-info'>🔴 Attendance session ended</div>";
+            "<div class='alert alert-info'>Attendance session ended</div>";
           
           // Hide code display
           document.getElementById("attendanceCodeDisplay").style.display = "none";
@@ -526,23 +491,23 @@
           stopAttendancePolling();
         } else {
           document.getElementById("attendanceStatus").innerHTML = 
-            "<div class='alert alert-danger'>❌ " + (data.message || "Failed to end attendance") + "</div>";
+            "<div class='alert alert-danger'>" + (data.message || "Failed to end attendance") + "</div>";
         }
       })
       .catch(error => {
         console.error("Error ending attendance:", error);
         document.getElementById("attendanceStatus").innerHTML = 
-          "<div class='alert alert-danger'>❌ Error ending attendance</div>";
+          "<div class='alert alert-danger'>Error ending attendance</div>";
       });
     }
 
     function copyAttendanceCode() {
       const code = document.getElementById("attendanceCode").textContent;
       navigator.clipboard.writeText(code).then(() => {
-        alert("✅ Code copied to clipboard: " + code);
+        alert("Code copied to clipboard: " + code);
       }).catch(err => {
         console.error("Failed to copy:", err);
-        alert("❌ Failed to copy code");
+        alert("Failed to copy code");
       });
     }
 

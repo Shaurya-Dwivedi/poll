@@ -28,7 +28,7 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 #define BUTTON_D 14
 
 #define LED1_PIN 5    // A
-#define LED2_PIN 15   // B
+#define LED2_PIN 15   // B`
 #define LED3_PIN 26   // C
 #define LED4_BLUE 23  // D
 #define LED_RED 27    // Red (Wrong Answer indicator)
