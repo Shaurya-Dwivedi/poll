@@ -6,12 +6,47 @@
   <style>
     body {
       background-color: #f8f9fa;
+      transition: background-color 0.3s, color 0.3s;
     }
     .container {
       margin-top: 20px;
     }
     .card {
       margin-bottom: 20px;
+    }
+    
+    /* Dark Mode Styles */
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #212529;
+        color: #f8f9fa;
+      }
+      .card {
+        background-color: #343a40;
+        color: #f8f9fa;
+        border-color: #495057;
+      }
+      .form-control, .form-select {
+        background-color: #495057;
+        color: #f8f9fa;
+        border-color: #6c757d;
+      }
+      .form-control:focus, .form-select:focus {
+        background-color: #495057;
+        color: #f8f9fa;
+        border-color: #0d6efd;
+      }
+      .table {
+        color: #f8f9fa;
+      }
+      .table-striped > tbody > tr:nth-of-type(odd) > * {
+        background-color: #495057;
+      }
+      .input-group-text {
+        background-color: #495057;
+        color: #f8f9fa;
+        border-color: #6c757d;
+      }
     }
   </style>
 </head>
@@ -106,6 +141,73 @@
             <h5 class="card-title">Student Responses</h5>
             <div id="studentTable"></div>
             <button class="btn btn-secondary mt-3" onclick="downloadCSV()">📥 Export as CSV</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Attendance Section -->
+    <div class="row mt-4">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">🎓 Attendance Session</h5>
+            
+            <!-- Start Attendance Form -->
+            <div class="mb-3">
+              <label for="attendanceDuration" class="form-label">Duration (minutes)</label>
+              <input type="number" class="form-control" id="attendanceDuration" 
+                     min="1" max="60" value="5" placeholder="Enter duration (1-60 min)">
+            </div>
+            
+            <div class="mb-3">
+              <label for="attendanceSection" class="form-label">Section (optional)</label>
+              <select class="form-control" id="attendanceSection">
+                <option value="ALL">All Sections</option>
+                <option value="A">Section A</option>
+                <option value="B">Section B</option>
+              </select>
+            </div>
+            
+            <button class="btn btn-success" id="startAttendanceBtn" onclick="startAttendance()">
+              🟢 Start Attendance
+            </button>
+            <button class="btn btn-danger" id="endAttendanceBtn" onclick="endAttendance()" style="display: none;">
+              🔴 End Attendance
+            </button>
+            
+            <div id="attendanceStatus" class="mt-3"></div>
+            
+            <!-- Display Generated Code -->
+            <div id="attendanceCodeDisplay" style="display: none;" class="mt-3">
+              <div class="alert alert-success">
+                <h4 class="alert-heading">Attendance Code:</h4>
+                <h2 class="text-center mb-2" id="attendanceCode" style="font-family: monospace; letter-spacing: 4px;"></h2>
+                <div class="text-center">
+                  <button class="btn btn-sm btn-outline-success" onclick="copyAttendanceCode()">
+                    📋 Copy Code
+                  </button>
+                </div>
+                <div class="text-center mt-3">
+                  <span class="fs-5">⏱️ Time Remaining: <strong id="attendanceTimer">--:--</strong></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Live Attendance</h5>
+            <div id="attendanceStats" class="mb-3">
+              <p>No active session</p>
+            </div>
+            <div id="attendanceList" style="max-height: 400px; overflow-y: auto;"></div>
+            <button class="btn btn-secondary mt-3" onclick="exportAttendance()" id="exportAttendanceBtn" style="display: none;">
+              📥 Export as CSV
+            </button>
           </div>
         </div>
       </div>
@@ -348,6 +450,212 @@
           }
         });
     }, 1000);
+
+    // ========== ATTENDANCE FUNCTIONS ==========
+    
+    let attendanceInterval = null;
+    let attendanceTimerInterval = null;
+
+    function startAttendance() {
+      const duration = document.getElementById("attendanceDuration").value;
+      const section = document.getElementById("attendanceSection").value;
+
+      if (!duration || duration < 1 || duration > 60) {
+        document.getElementById("attendanceStatus").innerHTML = 
+          "<div class='alert alert-warning'>⚠️ Please enter a valid duration (1-60 minutes)</div>";
+        return;
+      }
+
+      fetch(`${server}/start_attendance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ duration: parseInt(duration), section })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById("attendanceStatus").innerHTML = 
+            "<div class='alert alert-success'>✅ Attendance session started!</div>";
+          
+          // Display the code
+          document.getElementById("attendanceCode").textContent = data.code;
+          document.getElementById("attendanceCodeDisplay").style.display = "block";
+          
+          // Toggle buttons
+          document.getElementById("startAttendanceBtn").style.display = "none";
+          document.getElementById("endAttendanceBtn").style.display = "inline-block";
+          document.getElementById("exportAttendanceBtn").style.display = "inline-block";
+          
+          // Start fetching attendance updates
+          startAttendancePolling();
+        } else {
+          document.getElementById("attendanceStatus").innerHTML = 
+            "<div class='alert alert-danger'>❌ " + (data.message || "Failed to start attendance") + "</div>";
+        }
+      })
+      .catch(error => {
+        console.error("Error starting attendance:", error);
+        document.getElementById("attendanceStatus").innerHTML = 
+          "<div class='alert alert-danger'>❌ Error starting attendance</div>";
+      });
+    }
+
+    function endAttendance() {
+      if (!confirm("Are you sure you want to end this attendance session? Students won't be able to mark attendance anymore.")) {
+        return;
+      }
+
+      fetch(`${server}/end_attendance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById("attendanceStatus").innerHTML = 
+            "<div class='alert alert-info'>🔴 Attendance session ended</div>";
+          
+          // Hide code display
+          document.getElementById("attendanceCodeDisplay").style.display = "none";
+          
+          // Toggle buttons
+          document.getElementById("startAttendanceBtn").style.display = "inline-block";
+          document.getElementById("endAttendanceBtn").style.display = "none";
+          
+          // Stop polling
+          stopAttendancePolling();
+        } else {
+          document.getElementById("attendanceStatus").innerHTML = 
+            "<div class='alert alert-danger'>❌ " + (data.message || "Failed to end attendance") + "</div>";
+        }
+      })
+      .catch(error => {
+        console.error("Error ending attendance:", error);
+        document.getElementById("attendanceStatus").innerHTML = 
+          "<div class='alert alert-danger'>❌ Error ending attendance</div>";
+      });
+    }
+
+    function copyAttendanceCode() {
+      const code = document.getElementById("attendanceCode").textContent;
+      navigator.clipboard.writeText(code).then(() => {
+        alert("✅ Code copied to clipboard: " + code);
+      }).catch(err => {
+        console.error("Failed to copy:", err);
+        alert("❌ Failed to copy code");
+      });
+    }
+
+    function fetchAttendanceStatus() {
+      fetch(`${server}/get_attendance`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.active) {
+            // Update timer
+            const minutes = Math.floor(data.timeLeft / 60);
+            const seconds = data.timeLeft % 60;
+            document.getElementById("attendanceTimer").textContent = 
+              `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Fetch and display attendance list
+            fetchAttendanceList();
+          } else {
+            // No active session - reset UI
+            document.getElementById("attendanceCodeDisplay").style.display = "none";
+            document.getElementById("startAttendanceBtn").style.display = "inline-block";
+            document.getElementById("endAttendanceBtn").style.display = "none";
+            document.getElementById("attendanceStats").innerHTML = "<p>No active session</p>";
+            document.getElementById("attendanceList").innerHTML = "";
+            stopAttendancePolling();
+          }
+        })
+        .catch(error => {
+          console.error("Error fetching attendance status:", error);
+        });
+    }
+
+    function fetchAttendanceList() {
+      fetch(`${server}/attendance_results`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            // Update stats
+            const stats = data.summary;
+            document.getElementById("attendanceStats").innerHTML = `
+              <div class="alert alert-info">
+                <strong>Total Present:</strong> ${stats.present} / ${stats.totalStudents} 
+                (${stats.presentPercentage}%)
+                <br><strong>Absent:</strong> ${stats.absent}
+              </div>
+            `;
+            
+            // Update attendance list
+            if (data.records.length === 0) {
+              document.getElementById("attendanceList").innerHTML = 
+                "<div class='alert alert-warning'>No students have marked attendance yet.</div>";
+            } else {
+              let table = `<table class="table table-striped table-hover table-sm">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Roll No</th>
+                    <th>Name</th>
+                    <th>Time</th>
+                  </tr>
+                </thead>
+                <tbody>`;
+              
+              data.records.forEach((record, index) => {
+                const time = new Date(record.markedAt).toLocaleTimeString();
+                table += `<tr>
+                  <td>${index + 1}</td>
+                  <td><strong>${record.rollNo}</strong></td>
+                  <td>${record.name}</td>
+                  <td><small>${time}</small></td>
+                </tr>`;
+              });
+              
+              table += "</tbody></table>";
+              document.getElementById("attendanceList").innerHTML = table;
+            }
+          }
+        })
+        .catch(error => {
+          console.error("Error fetching attendance list:", error);
+        });
+    }
+
+    function startAttendancePolling() {
+      // Clear any existing intervals
+      stopAttendancePolling();
+      
+      // Fetch immediately
+      fetchAttendanceStatus();
+      
+      // Then poll every second for timer updates
+      attendanceTimerInterval = setInterval(fetchAttendanceStatus, 1000);
+      
+      // Poll every 3 seconds for attendance list updates
+      attendanceInterval = setInterval(fetchAttendanceList, 3000);
+    }
+
+    function stopAttendancePolling() {
+      if (attendanceInterval) {
+        clearInterval(attendanceInterval);
+        attendanceInterval = null;
+      }
+      if (attendanceTimerInterval) {
+        clearInterval(attendanceTimerInterval);
+        attendanceTimerInterval = null;
+      }
+    }
+
+    function exportAttendance() {
+      window.open(`${server}/export_attendance`, "_blank");
+    }
+
+    // Check for active attendance session on page load
+    fetchAttendanceStatus();
   </script>
 </body>
 </html>
