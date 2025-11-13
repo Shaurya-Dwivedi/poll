@@ -7,12 +7,12 @@
 // ========================================
 
 // WiFi Credentials - Replace with your WiFi network
-const char* ssid = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
+const char* ssid = "server";
+const char* password = "chainikhaini123";
 
 // Server URL - Replace with your Render deployment URL
 // Format: https://your-app-name.onrender.com (NO trailing slash!)
-const String server = "https://your-app-name.onrender.com";
+const String server = "https://poll-z8ll.onrender.com";
 
 // ========================================
 // END CONFIGURATION
@@ -52,6 +52,12 @@ bool awaitingConfirm = false;
 char confirmChoice = '\0';
 bool showResult = false;
 String lastLCDMessage = "";
+
+// Attendance State
+bool inAttendanceMode = false;
+String attendanceCode = "";
+int attendanceTimeLeft = 0;
+unsigned long lastAttendanceCheck = 0;
 
 
 // Flags
@@ -125,6 +131,8 @@ void loop() {
 
   if (studentRoll == "") {
     handleCodeEntry();  // Only if not logged in
+  } else if (inAttendanceMode) {
+    handleAttendanceMode();  // Handle attendance code entry
   } else if (!inVoting && !voteSent && !showResult) {
     lcd.setCursor(0, 0);
     lcd.print("Waiting Poll...     ");
@@ -472,22 +480,23 @@ void postResultOptions() {
     lcd.setCursor(0, 0);
     lcd.print("Confirm Logout?     ");
     lcd.setCursor(0, 1);
-    lcd.print("Press D again...    ");
+    lcd.print("Press B again...    ");
     lastLCDMessage = "";  // force re-render next time
   } else {
-    String currentMsg = "C=Look for Poll.\nD=Logout          ";
+    String currentMsg = "A=Poll B=Logout\nC=Attend D=Rank";
 
     if (lastLCDMessage != currentMsg) {
       lcd.clear();
       lcd.setCursor(0, 0);
-      lcd.print("C=Look for Poll.");
+      lcd.print("A=Poll B=Logout ");
       lcd.setCursor(0, 1);
-      lcd.print("D=Logout          ");
+      lcd.print("C=Attend D=Rank ");
       lastLCDMessage = currentMsg;
     }
   }
 
-  if (checkButton(BUTTON_C, btnC)) {
+  // Option A: Look for Poll
+  if (checkButton(BUTTON_A, btnA)) {
     voteSent = false;
     inVoting = true;
     showResult = false;
@@ -495,10 +504,11 @@ void postResultOptions() {
 
     lcd.clear();
     lcd.print("Waiting Poll...     ");
-    lastLCDMessage = "";  // reset display tracking
+    lastLCDMessage = "";
   }
 
-  if (checkButton(BUTTON_D, btnD)) {
+  // Option B: Logout (with confirmation)
+  if (checkButton(BUTTON_B, btnB)) {
     logoutConfirmCount++;
     if (logoutConfirmCount >= 2) {
       lcd.clear();
@@ -513,14 +523,42 @@ void postResultOptions() {
       awaitingConfirm = false;
       logoutConfirmCount = 0;
       lastLCDMessage = "";
+      inAttendanceMode = false;
+      attendanceCode = "";
 
       lcd.clear();
       lcd.print("Enter Code:         ");
     }
   }
 
+  // Option C: Mark Attendance
+  if (checkButton(BUTTON_C, btnC)) {
+    showResult = false;
+    inAttendanceMode = true;
+    attendanceCode = "";
+    logoutConfirmCount = 0;
+
+    lcd.clear();
+    lcd.print("Enter Attd Code:");
+    lcd.setCursor(0, 1);
+    lcd.print("                ");
+    lastLCDMessage = "";
+  }
+
+  // Option D: View Rank (placeholder)
+  if (checkButton(BUTTON_D, btnD)) {
+    logoutConfirmCount = 0;
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Rank Feature    ");
+    lcd.setCursor(0, 1);
+    lcd.print("Coming Soon!    ");
+    delay(2000);
+    lastLCDMessage = "";  // force menu re-render
+  }
+
   // Cancel logout confirm if other button is pressed
-  if (checkButton(BUTTON_A, btnA) || checkButton(BUTTON_B, btnB) || checkButton(BUTTON_C, btnC)) {
+  if (checkButton(BUTTON_A, btnA) || checkButton(BUTTON_C, btnC) || checkButton(BUTTON_D, btnD)) {
     logoutConfirmCount = 0;
   }
 }
@@ -560,4 +598,155 @@ int getLedPinForChoice(char choice) {
     case 'D': return LED4_BLUE;
     default: return -1;
   }
+}
+
+// ========== ATTENDANCE FUNCTIONS ==========
+
+void handleAttendanceMode() {
+  // Check attendance status and display timer
+  if (millis() - lastAttendanceCheck > 1000) {
+    checkAttendanceStatus();
+    lastAttendanceCheck = millis();
+  }
+
+  // Handle code entry (10 characters: A/B/C/D only)
+  if (checkButton(BUTTON_A, btnA)) attendanceCode += 'A';
+  if (checkButton(BUTTON_B, btnB)) attendanceCode += 'B';
+  if (checkButton(BUTTON_C, btnC)) attendanceCode += 'C';
+  if (checkButton(BUTTON_D, btnD)) attendanceCode += 'D';
+
+  // Backspace support
+  if (checkButton(BTN_BACKSPACE, btnBackspace) && attendanceCode.length() > 0) {
+    attendanceCode.remove(attendanceCode.length() - 1);
+  }
+
+  // Display entered code on second line
+  lcd.setCursor(0, 1);
+  lcd.print(attendanceCode + "          ");  // pad with spaces
+
+  // Submit when 10 characters entered
+  if (attendanceCode.length() == 10) {
+    submitAttendance();
+  }
+}
+
+void checkAttendanceStatus() {
+  HTTPClient http;
+  http.begin(server + "/get_attendance");
+  int httpCode = http.GET();
+  
+  if (httpCode > 0) {
+    String response = http.getString();
+    
+    if (response.indexOf("\"active\":true") != -1) {
+      attendanceTimeLeft = extract(response, "timeLeft").toInt();
+      
+      // Update timer on LCD (first line)
+      lcd.setCursor(0, 0);
+      int minutes = attendanceTimeLeft / 60;
+      int seconds = attendanceTimeLeft % 60;
+      lcd.print("Time: " + String(minutes) + "m " + String(seconds) + "s   ");
+    } else {
+      // No active session
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Attendance Closed");
+      lcd.setCursor(0, 1);
+      lcd.print("Returning...    ");
+      delay(2000);
+      
+      // Return to menu
+      inAttendanceMode = false;
+      attendanceCode = "";
+      showResult = true;
+      lastLCDMessage = "";
+    }
+  }
+  http.end();
+}
+
+void submitAttendance() {
+  HTTPClient http;
+  http.begin(server + "/mark_attendance");
+  http.addHeader("Content-Type", "application/json");
+  
+  String payload = "{\"rollNo\":\"" + studentRoll + "\",\"code\":\"" + attendanceCode + "\"}";
+  Serial.println("📝 Submitting attendance: " + payload);
+  
+  int httpCode = http.POST(payload);
+  if (httpCode > 0) {
+    String response = http.getString();
+    Serial.println("📥 Attendance Response: " + response);
+    
+    lcd.clear();
+    
+    if (response.indexOf("\"success\":true") != -1) {
+      // Success - show confirmation
+      lcd.setCursor(0, 0);
+      lcd.print("Attendance      ");
+      lcd.setCursor(0, 1);
+      lcd.print("Marked!         ");
+      
+      // Blink GREEN LED
+      for (int i = 0; i < 3; i++) {
+        digitalWrite(LED_GREEN, LOW);
+        delay(300);
+        digitalWrite(LED_GREEN, HIGH);
+        delay(300);
+      }
+      
+      Serial.println("✅ Attendance marked successfully!");
+      
+    } else if (response.indexOf("already marked") != -1) {
+      // Already marked
+      lcd.setCursor(0, 0);
+      lcd.print("Already Marked! ");
+      lcd.setCursor(0, 1);
+      lcd.print("                ");
+      
+      // Blink BLUE LED
+      for (int i = 0; i < 3; i++) {
+        digitalWrite(LED_BLUE, LOW);
+        delay(300);
+        digitalWrite(LED_BLUE, HIGH);
+        delay(300);
+      }
+      
+      Serial.println("⚠️ Attendance already marked");
+      
+    } else {
+      // Invalid code or other error
+      lcd.setCursor(0, 0);
+      lcd.print("Invalid Code!   ");
+      lcd.setCursor(0, 1);
+      lcd.print("Try Again...    ");
+      
+      // Blink RED LED
+      for (int i = 0; i < 3; i++) {
+        digitalWrite(LED_RED, LOW);
+        delay(300);
+        digitalWrite(LED_RED, HIGH);
+        delay(300);
+      }
+      
+      Serial.println("❌ Invalid attendance code");
+    }
+  } else {
+    lcd.setCursor(0, 0);
+    lcd.print("Server Error!   ");
+    lcd.setCursor(0, 1);
+    lcd.print("Code: " + String(httpCode));
+    Serial.println("❌ HTTP Error: " + String(httpCode));
+  }
+  http.end();
+  
+  delay(2000);
+  
+  // Return to menu
+  inAttendanceMode = false;
+  attendanceCode = "";
+  showResult = true;
+  lastLCDMessage = "";
+  
+  lcd.clear();
 }
