@@ -302,6 +302,133 @@ app.get('/results', async (req, res) => {
   }
 });
 
+// 📜 Get Poll History (all completed polls)
+app.get('/poll_history', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    const skip = parseInt(req.query.skip) || 0;
+    
+    // Get all polls sorted by most recent first
+    const polls = await Poll.find()
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .select('question options correct votes createdAt active startTime endTime');
+
+    const total = await Poll.countDocuments();
+
+    const history = polls.map(poll => {
+      const results = poll.getResults();
+      return {
+        pollId: poll._id,
+        question: poll.question,
+        options: poll.options,
+        correct: poll.correct,
+        active: poll.active,
+        createdAt: poll.createdAt,
+        startTime: poll.startTime,
+        endTime: poll.endTime,
+        totalVotes: results.totalVotes,
+        voteCounts: results.voteCounts,
+        details: results.details
+      };
+    });
+
+    res.json({
+      success: true,
+      total: total,
+      count: history.length,
+      polls: history
+    });
+  } catch (error) {
+    console.error('❌ Poll history error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching poll history',
+      error: error.message
+    });
+  }
+});
+
+// 🗑️ Delete Poll from History
+app.delete('/poll/:pollId', async (req, res) => {
+  try {
+    const { pollId } = req.params;
+    
+    const poll = await Poll.findById(pollId);
+    
+    if (!poll) {
+      return res.status(404).json({
+        success: false,
+        message: 'Poll not found'
+      });
+    }
+
+    // Don't allow deleting active polls
+    if (poll.active) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete an active poll'
+      });
+    }
+
+    await Poll.findByIdAndDelete(pollId);
+
+    res.json({
+      success: true,
+      message: 'Poll deleted successfully'
+    });
+  } catch (error) {
+    console.error('❌ Delete poll error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting poll',
+      error: error.message
+    });
+  }
+});
+
+// 📤 Export Individual Poll to CSV
+app.get('/export_poll/:pollId', async (req, res, next) => {
+  try {
+    const { pollId } = req.params;
+    const poll = await Poll.findById(pollId);
+    
+    if (!poll) {
+      return res.status(404).send("Poll not found");
+    }
+
+    // Build CSV content
+    let csv = "Roll No,Name,Vote,Correct\n";
+    
+    for (const vote of poll.votes) {
+      const isCorrect = vote.answer === poll.correct ? "Yes" : "No";
+      csv += `${vote.rollNo},${vote.studentName},${vote.answer},${isCorrect}\n`;
+    }
+
+    // Create temporary file
+    const timestamp = new Date(poll.createdAt).toISOString().replace(/[:.]/g, '-');
+    const fileName = `poll_${pollId}_${timestamp}.csv`;
+    const filePath = path.join(__dirname, fileName);
+    
+    fs.writeFileSync(filePath, csv);
+
+    res.download(filePath, fileName, (err) => {
+      // Clean up the file after download
+      fs.unlink(filePath, (unlinkErr) => {
+        if (unlinkErr) console.error('Error deleting temp file:', unlinkErr);
+      });
+      
+      if (err) {
+        next(err);
+      }
+    });
+  } catch (error) {
+    console.error('❌ Export poll error:', error);
+    next(error);
+  }
+});
+
 // 📤 Export to CSV
 app.get('/export', async (req, res, next) => {
   try {

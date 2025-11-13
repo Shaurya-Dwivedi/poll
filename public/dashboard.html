@@ -6,24 +6,168 @@
   <style>
     body {
       background-color: #f8f9fa;
+      margin: 0;
+      padding: 0;
     }
-    .container {
-      margin-top: 20px;
+    .dashboard-container {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 300px;
+      background-color: #ffffff;
+      border-right: 2px solid #dee2e6;
+      overflow-y: auto;
+      transition: width 0.3s;
+      flex-shrink: 0;
+    }
+    .sidebar.collapsed {
+      width: 0;
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 15px;
+      background-color: #0d6efd;
+      color: white;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sidebar-content {
+      padding: 10px;
+    }
+    .history-item {
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 5px;
+      padding: 10px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .history-item:hover {
+      background-color: #e9ecef;
+    }
+    .history-item.active {
+      background-color: #cfe2ff;
+      border-color: #0d6efd;
+    }
+    .history-question {
+      font-weight: 500;
+      font-size: 14px;
+      color: #212529;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .history-meta {
+      font-size: 12px;
+      color: #6c757d;
+      margin-top: 5px;
+    }
+    .history-details {
+      display: none;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #dee2e6;
+    }
+    .history-details.expanded {
+      display: block;
+    }
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+    .toggle-sidebar-btn {
+      position: fixed;
+      top: 20px;
+      left: 10px;
+      z-index: 1000;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .sidebar.collapsed + .main-content .toggle-sidebar-btn {
+      left: 10px;
     }
     .card {
       margin-bottom: 20px;
     }
+    .history-search {
+      margin-bottom: 10px;
+    }
+    .poll-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 11px;
+      border-radius: 3px;
+      margin-left: 5px;
+    }
+    .poll-badge.active {
+      background-color: #198754;
+      color: white;
+    }
+    .poll-badge.completed {
+      background-color: #6c757d;
+      color: white;
+    }
+    .history-actions {
+      margin-top: 8px;
+      display: flex;
+      gap: 5px;
+    }
+    .history-actions button {
+      padding: 3px 8px;
+      font-size: 11px;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h1 class="mb-0">📊 Polling Dashboard</h1>
-      <div>
-        <span id="welcomeUser" class="me-3"></span>
-        <button class="btn btn-sm btn-outline-danger" onclick="logout()">Logout</button>
+  <div class="dashboard-container">
+    <!-- Sidebar for Poll History -->
+    <div class="sidebar" id="historySidebar">
+      <div class="sidebar-header">
+        <div>
+          <h6 class="mb-0">Poll History</h6>
+          <small id="historyCount">Loading...</small>
+        </div>
+        <button class="btn btn-sm btn-light" onclick="toggleSidebar()" title="Collapse">
+          &times;
+        </button>
+      </div>
+      <div class="sidebar-content">
+        <input type="text" class="form-control form-control-sm history-search" 
+               id="historySearch" placeholder="Search polls..." 
+               onkeyup="filterHistory()">
+        <div id="historyList"></div>
       </div>
     </div>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+      <button class="btn btn-primary toggle-sidebar-btn" onclick="toggleSidebar()" id="toggleBtn">
+        ☰
+      </button>
+
+      <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4" style="margin-top: 50px;">
+          <h1 class="mb-0">Polling Dashboard</h1>
+          <div>
+            <span id="welcomeUser" class="me-3"></span>
+            <button class="btn btn-sm btn-outline-danger" onclick="logout()">Logout</button>
+          </div>
+        </div>
 
     <!-- Student Search Section -->
     <div class="card mb-4">
@@ -352,45 +496,57 @@
       resultsDiv.innerHTML = html;
     }
 
+    let lastPollResults = null;
+    let currentActivePollId = null;
+
     function fetchResults() {
       // Fetch results - the endpoint now only returns active poll results
       fetch(`${server}/results`)
         .then(res => res.json())
         .then(data => {
-          if (!data.active) {
-            // No active poll - clear the results display
-            currentPollId = null;
+          // Check if a new poll has started
+          if (data.active && data.pollId !== currentActivePollId) {
+            // New poll started - clear old results
+            currentActivePollId = data.pollId;
+            lastPollResults = null;
+          }
+
+          if (data.active) {
+            // Active poll - store and display results
+            currentPollId = data.pollId;
+            lastPollResults = data;
+            displayPollResults(data);
+          } else if (!data.active && lastPollResults) {
+            // Poll ended - keep showing last results
+            displayPollResults(lastPollResults);
+          } else {
+            // No poll has been run yet
             document.getElementById("results").innerHTML = "<div class='alert alert-info'>No active poll. Start a new poll to see results.</div>";
             document.getElementById("studentTable").innerHTML = "";
-            return;
           }
-          
-          // Update the current poll ID
-          currentPollId = data.pollId;
-          
-          const summary = data.summary;
-          const details = data.details;
-
-          let summaryHTML = "<ul class='list-group'>";
-          for (let option in summary) {
-            summaryHTML += `<li class='list-group-item d-flex justify-content-between align-items-center'>${option}: <strong>${summary[option]} votes</strong></li>`;
-          }
-          summaryHTML += "</ul>"
-          document.getElementById("results").innerHTML = summaryHTML || "No votes yet.";
-
-          // Student response table
-          let table = `<table class="table table-striped table-hover">
-            <thead><tr><th>Roll No</th><th>Name</th><th>Vote</th><th>Correct?</th></tr></thead><tbody>`;
-          for (let s of details) {
-            const icon = s.correct ? "✅" : "❌";
-            table += `<tr><td>${s.rollNo}</td><td>${s.name}</td><td>${s.vote}</td><td>${icon}</td></tr>`;
-          }
-          table += "</tbody></table>";
-          document.getElementById("studentTable").innerHTML = table;
-        })
-        .catch(error => {
-          console.error("Error fetching results:", error);
         });
+    }
+
+    function displayPollResults(data) {
+      const summary = data.summary;
+      const details = data.details;
+
+      let summaryHTML = "<ul class='list-group'>";
+      for (let option in summary) {
+        summaryHTML += `<li class='list-group-item d-flex justify-content-between align-items-center'>${option}: <strong>${summary[option]} votes</strong></li>`;
+      }
+      summaryHTML += "</ul>"
+      document.getElementById("results").innerHTML = summaryHTML || "No votes yet.";
+
+      // Student response table
+      let table = `<table class="table table-striped table-hover">
+        <thead><tr><th>Roll No</th><th>Name</th><th>Vote</th><th>Correct?</th></tr></thead><tbody>`;
+      for (let s of details) {
+        const icon = s.correct ? "✅" : "❌";
+        table += `<tr><td>${s.rollNo}</td><td>${s.name}</td><td>${s.vote}</td><td>${icon}</td></tr>`;
+      }
+      table += "</tbody></table>";
+      document.getElementById("studentTable").innerHTML = table;
     }
 
     function downloadCSV() {
@@ -621,6 +777,157 @@
 
     // Check for active attendance session on page load
     fetchAttendanceStatus();
+
+    // ========== HISTORY SIDEBAR FUNCTIONS ==========
+    
+    let pollHistory = [];
+    let selectedPollId = null;
+
+    function toggleSidebar() {
+      const sidebar = document.getElementById('historySidebar');
+      const toggleBtn = document.getElementById('toggleBtn');
+      sidebar.classList.toggle('collapsed');
+      
+      if (sidebar.classList.contains('collapsed')) {
+        toggleBtn.innerHTML = '☰';
+      } else {
+        toggleBtn.innerHTML = '☰';
+      }
+    }
+
+    function loadPollHistory() {
+      fetch(`${server}/poll_history?limit=50`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            pollHistory = data.polls;
+            renderHistory();
+            document.getElementById('historyCount').textContent = 
+              `${data.count} poll${data.count !== 1 ? 's' : ''}`;
+          }
+        })
+        .catch(error => {
+          console.error('Error loading poll history:', error);
+          document.getElementById('historyCount').textContent = 'Error loading';
+        });
+    }
+
+    function renderHistory() {
+      const historyList = document.getElementById('historyList');
+      
+      if (pollHistory.length === 0) {
+        historyList.innerHTML = '<p class="text-muted text-center">No polls yet</p>';
+        return;
+      }
+
+      historyList.innerHTML = pollHistory.map(poll => {
+        const date = new Date(poll.createdAt);
+        const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        const badge = poll.active ? 
+          '<span class="poll-badge active">Active</span>' : 
+          '<span class="poll-badge completed">Completed</span>';
+        
+        return `
+          <div class="history-item" data-poll-id="${poll.pollId}" onclick="togglePollDetails('${poll.pollId}')">
+            <div class="history-question">${poll.question}${badge}</div>
+            <div class="history-meta">
+              ${dateStr} | ${poll.totalVotes} vote${poll.totalVotes !== 1 ? 's' : ''}
+            </div>
+            <div class="history-details" id="details-${poll.pollId}">
+              <div><strong>Options:</strong></div>
+              <ul style="font-size: 12px; margin: 5px 0;">
+                <li>A: ${poll.options.A}</li>
+                <li>B: ${poll.options.B}</li>
+                <li>C: ${poll.options.C}</li>
+                <li>D: ${poll.options.D}</li>
+              </ul>
+              <div><strong>Correct:</strong> ${poll.correct}</div>
+              <div><strong>Results:</strong></div>
+              <ul style="font-size: 12px; margin: 5px 0;">
+                <li>A: ${poll.voteCounts.A || 0} votes</li>
+                <li>B: ${poll.voteCounts.B || 0} votes</li>
+                <li>C: ${poll.voteCounts.C || 0} votes</li>
+                <li>D: ${poll.voteCounts.D || 0} votes</li>
+              </ul>
+              <div class="history-actions">
+                <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); exportPollCSV('${poll.pollId}')">
+                  Export
+                </button>
+                ${!poll.active ? `<button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deletePoll('${poll.pollId}')">
+                  Delete
+                </button>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function togglePollDetails(pollId) {
+      const details = document.getElementById(`details-${pollId}`);
+      const allDetails = document.querySelectorAll('.history-details');
+      
+      // Close all other details
+      allDetails.forEach(d => {
+        if (d.id !== `details-${pollId}`) {
+          d.classList.remove('expanded');
+        }
+      });
+      
+      // Toggle current
+      details.classList.toggle('expanded');
+      selectedPollId = details.classList.contains('expanded') ? pollId : null;
+    }
+
+    function filterHistory() {
+      const searchTerm = document.getElementById('historySearch').value.toLowerCase();
+      const items = document.querySelectorAll('.history-item');
+      
+      items.forEach(item => {
+        const question = item.querySelector('.history-question').textContent.toLowerCase();
+        if (question.includes(searchTerm)) {
+          item.style.display = 'block';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    }
+
+    function exportPollCSV(pollId) {
+      window.open(`${server}/export_poll/${pollId}`, '_blank');
+    }
+
+    function deletePoll(pollId) {
+      if (!confirm('Are you sure you want to delete this poll? This action cannot be undone.')) {
+        return;
+      }
+
+      fetch(`${server}/poll/${pollId}`, {
+        method: 'DELETE'
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('Poll deleted successfully');
+          loadPollHistory(); // Reload history
+        } else {
+          alert('Error: ' + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error deleting poll:', error);
+        alert('Error deleting poll');
+      });
+    }
+
+    // Load poll history on page load
+    loadPollHistory();
+    
+    // Refresh history every 10 seconds
+    setInterval(loadPollHistory, 10000);
   </script>
+      </div> <!-- end container-fluid -->
+    </div> <!-- end main-content -->
+  </div> <!-- end dashboard-container -->
 </body>
 </html>
