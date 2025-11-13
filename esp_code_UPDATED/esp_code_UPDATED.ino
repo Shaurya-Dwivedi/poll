@@ -671,12 +671,12 @@ void submitAttendance() {
   http.addHeader("Content-Type", "application/json");
   
   String payload = "{\"rollNo\":\"" + studentRoll + "\",\"code\":\"" + attendanceCode + "\"}";
-  Serial.println("📝 Submitting attendance: " + payload);
+  Serial.println("Submitting attendance: " + payload);
   
   int httpCode = http.POST(payload);
   if (httpCode > 0) {
     String response = http.getString();
-    Serial.println("📥 Attendance Response: " + response);
+    Serial.println("Attendance Response: " + response);
     
     lcd.clear();
     
@@ -695,7 +695,16 @@ void submitAttendance() {
         delay(300);
       }
       
-      Serial.println("✅ Attendance marked successfully!");
+      Serial.println("Attendance marked successfully!");
+      
+      // Show "Wait for attendance to end" message
+      delay(1000);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Wait for attd   ");
+      lcd.setCursor(0, 1);
+      lcd.print("to end...       ");
+      delay(3000);
       
     } else if (response.indexOf("already marked") != -1) {
       // Already marked
@@ -712,7 +721,16 @@ void submitAttendance() {
         delay(300);
       }
       
-      Serial.println("⚠️ Attendance already marked");
+      Serial.println("Attendance already marked");
+      
+      // Show wait message
+      delay(1000);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Wait for attd   ");
+      lcd.setCursor(0, 1);
+      lcd.print("to end...       ");
+      delay(3000);
       
     } else {
       // Invalid code or other error
@@ -729,20 +747,38 @@ void submitAttendance() {
         delay(300);
       }
       
-      Serial.println("❌ Invalid attendance code");
+      Serial.println("Invalid attendance code");
+      
+      // Return to menu on invalid code (allow retry)
+      delay(2000);
+      inAttendanceMode = false;
+      attendanceCode = "";
+      showResult = true;
+      lastLCDMessage = "";
+      lcd.clear();
+      http.end();
+      return;
     }
   } else {
     lcd.setCursor(0, 0);
     lcd.print("Server Error!   ");
     lcd.setCursor(0, 1);
     lcd.print("Code: " + String(httpCode));
-    Serial.println("❌ HTTP Error: " + String(httpCode));
+    Serial.println("HTTP Error: " + String(httpCode));
+    
+    // Return to menu on server error
+    delay(2000);
+    inAttendanceMode = false;
+    attendanceCode = "";
+    showResult = true;
+    lastLCDMessage = "";
+    lcd.clear();
+    http.end();
+    return;
   }
   http.end();
   
-  delay(2000);
-  
-  // Return to menu
+  // Return to menu after successful attendance
   inAttendanceMode = false;
   attendanceCode = "";
   showResult = true;
