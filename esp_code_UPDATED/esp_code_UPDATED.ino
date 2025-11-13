@@ -692,20 +692,8 @@ void showMainMenu() {
     lastLCDMessage = "";
   }
 
-  // Option D: View Rank (placeholder)
-  if (checkButton(BUTTON_D, btnD)) {
-    logoutConfirmCount = 0;
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Rank Feature    ");
-    lcd.setCursor(0, 1);
-    lcd.print("Coming Soon!    ");
-    delay(2000);
-    lastLCDMessage = "";  // force menu re-render
-  }
-
   // Cancel logout confirm if other button is pressed
-  if (checkButton(BUTTON_A, btnA) || checkButton(BUTTON_C, btnC) || checkButton(BUTTON_D, btnD)) {
+  if (checkButton(BUTTON_A, btnA) || checkButton(BUTTON_C, btnC)) {
     logoutConfirmCount = 0;
   }
 }
