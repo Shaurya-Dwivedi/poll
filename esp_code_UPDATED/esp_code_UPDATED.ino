@@ -135,8 +135,8 @@ void loop() {
   } else if (inAttendanceMode) {
     handleAttendanceMode();  // Handle attendance code entry
   } else if (!inVoting && !voteSent && !showResult) {
-    lcd.setCursor(0, 0);
-    lcd.print("Waiting Poll...     ");
+    // Show menu instead of automatically waiting for poll
+    showMainMenu();
   } else if (inVoting && !voteSent) {
     if (millis() - lastTimerCheck > 1000) {
       checkPollStatus();
@@ -258,9 +258,12 @@ void validateCode() {
       lcd.print(name);
       delay(2000);
 
-      inVoting = true;
+      // Don't automatically start voting, show menu instead
+      inVoting = false;
       voteSent = false;
+      showResult = false;
       selectedVote = '\0';
+      lastLCDMessage = ""; // Clear to force menu render
     } else {
       Serial.println("❌ Invalid code");
       lcd.clear();
@@ -297,7 +300,7 @@ void checkPollStatus() {
         lcd.setCursor(0, 1);
         lcd.print("Vote: A B C D             ");
       } else {
-        lcd.setCursor(1, 1);  // Don't clear "Voted: X" formatting on LCD
+        lcd.setCursor(0, 1);  // Don't clear "Voted: X" formatting on LCD
         lcd.print("Time: " + String(timeLeft) + "s        ");
       }
 
@@ -310,11 +313,28 @@ void checkPollStatus() {
       delay(2000);
       lcd.clear();
     } else {
+      // No active poll found
       lcd.clear();
-      lcd.print("Waiting Poll...     ");
+      lcd.setCursor(0, 0);
+      lcd.print("No Active Poll      ");
+      lcd.setCursor(0, 1);
+      lcd.print("Returning to menu...");
+      delay(2000);
+      inVoting = false;
+      showResult = false;
+      lastLCDMessage = ""; // Force menu render
     }
   } else {
     Serial.println("❌ Poll check error: " + String(httpCode));
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Connection Error    ");
+    lcd.setCursor(0, 1);
+    lcd.print("Returning to menu...");
+    delay(2000);
+    inVoting = false;
+    showResult = false;
+    lastLCDMessage = ""; // Force menu render
   }
   http.end();
 }
@@ -477,91 +497,8 @@ void fetchResult() {
 
 
 void postResultOptions() {
-  if (logoutConfirmCount == 1) {
-    lcd.setCursor(0, 0);
-    lcd.print("Confirm Logout?     ");
-    lcd.setCursor(0, 1);
-    lcd.print("Press B again...    ");
-    lastLCDMessage = "";  // force re-render next time
-  } else {
-    String currentMsg = "A=Poll B=Logout\nC=Attend D=Rank";
-
-    if (lastLCDMessage != currentMsg) {
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print("A=Poll B=Logout ");
-      lcd.setCursor(0, 1);
-      lcd.print("C=Attend D=Rank ");
-      lastLCDMessage = currentMsg;
-    }
-  }
-
-  // Option A: Look for Poll
-  if (checkButton(BUTTON_A, btnA)) {
-    voteSent = false;
-    inVoting = true;
-    showResult = false;
-    logoutConfirmCount = 0;
-
-    lcd.clear();
-    lcd.print("Waiting Poll...     ");
-    lastLCDMessage = "";
-  }
-
-  // Option B: Logout (with confirmation)
-  if (checkButton(BUTTON_B, btnB)) {
-    logoutConfirmCount++;
-    if (logoutConfirmCount >= 2) {
-      lcd.clear();
-      lcd.print("Logging Out...      ");
-      delay(2000);
-
-      studentRoll = "";
-      code = "";
-      voteSent = false;
-      inVoting = false;
-      showResult = false;
-      awaitingConfirm = false;
-      logoutConfirmCount = 0;
-      lastLCDMessage = "";
-      inAttendanceMode = false;
-      attendanceCode = "";
-
-      lcd.clear();
-      lcd.print("Enter Code:         ");
-    }
-  }
-
-  // Option C: Mark Attendance
-  if (checkButton(BUTTON_C, btnC)) {
-    showResult = false;
-    inAttendanceMode = true;
-    attendanceCode = "";
-    logoutConfirmCount = 0;
-
-    lcd.clear();
-    lcd.print("Enter Attd Code:");
-    lcd.setCursor(0, 1);
-    lcd.print("                ");
-    lastLCDMessage = "";
-  }
-
-  // Option D: View Rank (placeholder)
-  if (checkButton(BUTTON_D, btnD)) {
-    logoutConfirmCount = 0;
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Rank Feature    ");
-    lcd.setCursor(0, 1);
-    lcd.print("Coming Soon!    ");
-    delay(2000);
-    lastLCDMessage = "";  // force menu re-render
-  }
-
-  // Cancel logout confirm if other button is pressed
-  if (checkButton(BUTTON_A, btnA) || checkButton(BUTTON_C, btnC) || checkButton(BUTTON_D, btnD)) {
-    logoutConfirmCount = 0;
-  }
+  // Use the same main menu function for consistency
+  showMainMenu();
 }
 
 
@@ -598,6 +535,99 @@ int getLedPinForChoice(char choice) {
     case 'C': return LED3_PIN;
     case 'D': return LED4_BLUE;
     default: return -1;
+  }
+}
+
+// ========== MENU FUNCTIONS ==========
+
+void showMainMenu() {
+  String currentMsg = "A=Poll B=Logout\nC=Attend D=Rank";
+
+  if (lastLCDMessage != currentMsg) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("A=Poll B=Logout ");
+    lcd.setCursor(0, 1);
+    lcd.print("C=Attend D=Rank ");
+    lastLCDMessage = currentMsg;
+  }
+
+  // Option A: Look for Poll
+  if (checkButton(BUTTON_A, btnA)) {
+    voteSent = false;
+    inVoting = true;
+    showResult = false;
+    logoutConfirmCount = 0;
+
+    lcd.clear();
+    lcd.print("Checking Poll...    ");
+    lastLCDMessage = "";
+    // Check for active poll immediately
+    checkPollStatus();
+  }
+
+  // Option B: Logout (with confirmation)
+  if (checkButton(BUTTON_B, btnB)) {
+    logoutConfirmCount++;
+    if (logoutConfirmCount >= 2) {
+      lcd.clear();
+      lcd.print("Logging Out...      ");
+      delay(2000);
+
+      studentRoll = "";
+      code = "";
+      voteSent = false;
+      inVoting = false;
+      showResult = false;
+      awaitingConfirm = false;
+      logoutConfirmCount = 0;
+      lastLCDMessage = "";
+      inAttendanceMode = false;
+      attendanceCode = "";
+
+      lcd.clear();
+      lcd.print("Enter Code:         ");
+      return;
+    } else {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Confirm Logout?     ");
+      lcd.setCursor(0, 1);
+      lcd.print("Press B again...    ");
+      delay(2000);
+      lastLCDMessage = "";  // force re-render
+    }
+  }
+
+  // Option C: Mark Attendance
+  if (checkButton(BUTTON_C, btnC)) {
+    showResult = false;
+    inAttendanceMode = true;
+    attendanceCode = "";
+    logoutConfirmCount = 0;
+
+    lcd.clear();
+    lcd.print("Enter Attd Code:");
+    lcd.setCursor(0, 1);
+    lcd.print("                ");
+    lastLCDMessage = "";
+  }
+
+  // Option D: View Rank (placeholder)
+  if (checkButton(BUTTON_D, btnD)) {
+    logoutConfirmCount = 0;
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Rank Feature    ");
+    lcd.setCursor(0, 1);
+    lcd.print("Coming Soon!    ");
+    delay(2000);
+    lastLCDMessage = "";  // force menu re-render
+  }
+
+  // Cancel logout confirm if other button is pressed
+  if (checkButton(BUTTON_A, btnA) || checkButton(BUTTON_C, btnC) || checkButton(BUTTON_D, btnD)) {
+    logoutConfirmCount = 0;
   }
 }
 

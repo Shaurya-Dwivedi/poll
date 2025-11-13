@@ -219,11 +219,19 @@ pollSchema.methods.getResults = function() {
     correct: v.isCorrect
   }));
 
+  // Calculate vote counts from actual votes array (in case voteCount field is not updated)
+  const voteCounts = { A: 0, B: 0, C: 0, D: 0 };
+  this.votes.forEach(vote => {
+    if (voteCounts.hasOwnProperty(vote.answer)) {
+      voteCounts[vote.answer]++;
+    }
+  });
+
   return {
     question: this.question,
     correct: this.correct,
-    voteCounts: this.voteCount,
-    totalVotes: this.totalVotes,
+    voteCounts: voteCounts,
+    totalVotes: this.votes.length,
     details: details
   };
 };
