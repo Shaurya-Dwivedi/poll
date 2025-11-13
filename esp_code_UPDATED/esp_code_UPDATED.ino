@@ -40,6 +40,7 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 // State
 String code = "";
 String studentRoll = "";
+String name = "";
 bool inVoting = false;
 bool voteSent = false;
 bool btnBackspace = false;
@@ -246,7 +247,7 @@ void validateCode() {
     
     if (response.indexOf("success\":true") != -1) {
       studentRoll = extract(response, "rollNo");
-      String name = extract(response, "name");
+      name = extract(response, "name");
 
       Serial.println("✅ Login successful: " + studentRoll + " - " + name);
 

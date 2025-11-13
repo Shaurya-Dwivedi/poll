@@ -156,8 +156,11 @@ app.get('/poll', async (req, res) => {
       return res.json({ active: false });
     }
 
-    // Check if poll has expired
+    // Check if poll has expired - if so, mark it inactive
     if (activePoll.isExpired()) {
+      activePoll.active = false;
+      await activePoll.save();
+      console.log(`🔴 Auto-expired poll: ${activePoll._id}`);
       return res.json({ active: false });
     }
 
@@ -192,6 +195,10 @@ app.post('/vote', async (req, res) => {
     }
 
     if (activePoll.isExpired()) {
+      // Auto-expire the poll
+      activePoll.active = false;
+      await activePoll.save();
+      console.log(`🔴 Auto-expired poll during vote: ${activePoll._id}`);
       return res.status(400).json({ success: false, message: "Poll has ended" });
     }
 
@@ -461,7 +468,7 @@ app.get('/attendance_history', async (req, res) => {
         presentPercentage: stats.presentPercentage,
         records: session.records.map(r => ({
           rollNo: r.rollNo,
-          name: r.studentName,
+          name: r.name,
           markedAt: r.markedAt
         }))
       };
@@ -545,7 +552,7 @@ app.get('/export_attendance/:sessionId', async (req, res, next) => {
     
     // Present students
     for (const record of session.records) {
-      csv += `${record.rollNo},${record.studentName},${record.section || 'N/A'},Present,${new Date(record.markedAt).toLocaleString()}\n`;
+      csv += `${record.rollNo},${record.name},${record.section || 'N/A'},Present,${new Date(record.markedAt).toLocaleString()}\n`;
     }
     
     // Absent students
@@ -675,8 +682,11 @@ app.get('/get_attendance', async (req, res) => {
       return res.json({ active: false });
     }
 
-    // Check if session has expired
+    // Check if session has expired - if so, mark it inactive
     if (activeSession.isExpired()) {
+      activeSession.active = false;
+      await activeSession.save();
+      console.log(`🔴 Auto-expired attendance session: ${activeSession.code}`);
       return res.json({ active: false });
     }
 
@@ -698,7 +708,7 @@ app.get('/get_attendance', async (req, res) => {
 // ✅ Mark Attendance
 app.post('/mark_attendance', async (req, res) => {
   try {
-    const { rollNo, code } = req.body;
+    const { rollNo, code, name } = req.body;
 
     if (!rollNo || !code) {
       return res.status(400).json({ 
@@ -718,6 +728,10 @@ app.post('/mark_attendance', async (req, res) => {
     }
 
     if (activeSession.isExpired()) {
+      // Auto-expire the session
+      activeSession.active = false;
+      await activeSession.save();
+      console.log(`🔴 Auto-expired attendance session during mark: ${activeSession.code}`);
       return res.status(400).json({ 
         success: false, 
         message: 'Attendance session has ended' 
@@ -743,10 +757,12 @@ app.post('/mark_attendance', async (req, res) => {
     }
 
     // Mark attendance using the model method
+    // Use the name from request body if provided, otherwise use student.name from database
+    const studentName = name || student.name;
     await activeSession.markAttendance(
       student._id,
       student.rollNo,
-      student.name,
+      studentName,
       student.deviceCode || ''
     );
 
@@ -834,7 +850,7 @@ app.get('/attendance_results', async (req, res) => {
       },
       records: session.records.map(r => ({
         rollNo: r.rollNo,
-        name: r.studentName,
+        name: r.name,
         markedAt: r.markedAt
       }))
     });
@@ -866,7 +882,7 @@ app.get('/export_attendance', async (req, res, next) => {
 
     for (const record of session.records) {
       const markedAt = new Date(record.markedAt).toLocaleString();
-      csv += `${record.rollNo},${record.studentName},Present,${markedAt}\n`;
+      csv += `${record.rollNo},${record.name},Present,${markedAt}\n`;
     }
 
     // Create temporary file
