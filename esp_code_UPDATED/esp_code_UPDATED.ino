@@ -174,11 +174,14 @@ void loop() {
     // Show menu instead of automatically waiting for poll
     showMainMenu();
   } else if (inVoting && !voteSent) {
-    if (millis() - lastTimerCheck > 5000) {  // Changed from 1000ms to 5000ms (5 seconds)
+    // Prioritize button handling over network calls
+    handleVoting();
+    
+    // Only check poll status if not awaiting confirmation and enough time has passed
+    if (!awaitingConfirm && millis() - lastTimerCheck > 5000) {  // Increased to 5 seconds and skip during confirmation
       checkPollStatus();
       lastTimerCheck = millis();
     }
-    handleVoting();
   } else if (voteSent && !showResult) {
     if (millis() - lastPollTime > 5000) {  // Changed from 2000ms to 5000ms
       fetchResult();
@@ -259,7 +262,7 @@ void handleCodeEntry() {
 
 bool checkButton(int pin, bool& flag) {
   if (digitalRead(pin) == LOW && !flag) {
-    delay(50);
+    delay(30);  // Reduced debounce delay from 50ms to 30ms for faster response
     flag = true;
     return true;
   } else if (digitalRead(pin) == HIGH) {
@@ -409,7 +412,7 @@ void handleVoting() {
       lcd.clear();
       lcd.setCursor(0, 0);
       lcd.print("Vote Cancelled         ");
-      delay(1000);
+      delay(500);  // Reduced from 1000ms to 500ms
 
       lcd.clear();
       lcd.setCursor(0, 0);
@@ -472,7 +475,7 @@ void sendVote(char vote) {
     lcd.print("Vote Error!                ");
   }
   http.end();
-  delay(500);
+  // Removed delay(500) to improve responsiveness after vote submission
 }
 
 void fetchResult() {
@@ -579,7 +582,7 @@ void showConfirm(char vote) {
   lcd.print("Confirm vote?            ");
   lcd.setCursor(0, 1);
   lcd.print("Press " + String(vote) + " again          ");
-  delay(1000);
+  // Removed delay(1000) to improve button responsiveness
 }
 
 int getLedPinForChoice(char choice) {
@@ -648,7 +651,7 @@ void showMainMenu() {
       lcd.print("Confirm Logout?     ");
       lcd.setCursor(0, 1);
       lcd.print("Press B again...    ");
-      delay(2000);
+      delay(1000);  // Reduced from 2000ms to 1000ms
       lastLCDMessage = "";  // force re-render
     }
   }
