@@ -436,12 +436,12 @@ app.get('/attendance_history', async (req, res) => {
     const skip = parseInt(req.query.skip) || 0;
     
     // Get all attendance sessions sorted by most recent first
-    const sessions = await AttendanceSession.find()
+    const sessions = await Attendance.find()
       .sort({ startTime: -1 })
       .skip(skip)
       .limit(limit);
 
-    const total = await AttendanceSession.countDocuments();
+    const total = await Attendance.countDocuments();
 
     const history = await Promise.all(sessions.map(async (session) => {
       const stats = await session.getStatistics();
@@ -486,7 +486,7 @@ app.delete('/attendance/:sessionId', async (req, res) => {
   try {
     const { sessionId } = req.params;
     
-    const session = await AttendanceSession.findById(sessionId);
+    const session = await Attendance.findById(sessionId);
     
     if (!session) {
       return res.status(404).json({
@@ -503,7 +503,7 @@ app.delete('/attendance/:sessionId', async (req, res) => {
       });
     }
 
-    await AttendanceSession.findByIdAndDelete(sessionId);
+    await Attendance.findByIdAndDelete(sessionId);
 
     res.json({
       success: true,
@@ -523,7 +523,7 @@ app.delete('/attendance/:sessionId', async (req, res) => {
 app.get('/export_attendance/:sessionId', async (req, res, next) => {
   try {
     const { sessionId } = req.params;
-    const session = await AttendanceSession.findById(sessionId);
+    const session = await Attendance.findById(sessionId);
     
     if (!session) {
       return res.status(404).send("Attendance session not found");

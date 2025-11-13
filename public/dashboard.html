@@ -876,7 +876,7 @@
           <div class="history-item" data-poll-id="${poll.pollId}" onclick="togglePollDetails('${poll.pollId}')">
             <div class="history-question">${poll.question}${badge}</div>
             <div class="history-meta">
-              ${dateStr} | ${poll.totalVotes} vote${poll.totalVotes !== 1 ? 's' : ''}
+              ${dateStr} | ${poll.totalVotes || 0} vote${poll.totalVotes !== 1 ? 's' : ''}
             </div>
             <div class="history-details" id="details-${poll.pollId}">
               <div><strong>Options:</strong></div>
