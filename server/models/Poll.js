@@ -16,11 +16,11 @@ const voteSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  name: {
+  studentName: {
     type: String,
     required: true
   },
-  vote: {
+  answer: {
     type: String,
     required: true,
     enum: ['A', 'B', 'C', 'D'],
@@ -93,7 +93,7 @@ const pollSchema = new mongoose.Schema({
 
   endTime: {
     type: Date,
-    required: true
+    required: false  // Will be set by pre-save hook or createPoll method
   },
 
   // Status
@@ -143,7 +143,7 @@ pollSchema.index({ createdAt: -1 });
 
 // Pre-save middleware to calculate endTime
 pollSchema.pre('save', function(next) {
-  if (this.isNew) {
+  if (this.isNew && !this.endTime) {
     this.endTime = new Date(this.startTime.getTime() + this.duration * 1000);
   }
   this.updatedAt = Date.now();
@@ -194,8 +194,8 @@ pollSchema.methods.addVote = async function(studentId, rollNo, name, vote) {
   this.votes.push({
     student: studentId,
     rollNo: rollNo,
-    name: name,
-    vote: voteUpper,
+    studentName: name,
+    answer: voteUpper,
     isCorrect: isCorrect,
     timestamp: new Date()
   });
@@ -212,18 +212,19 @@ pollSchema.methods.addVote = async function(studentId, rollNo, name, vote) {
  * Get poll results
  */
 pollSchema.methods.getResults = function() {
+  const details = this.votes.map(v => ({
+    rollNo: v.rollNo,
+    name: v.studentName,
+    vote: v.answer,
+    correct: v.isCorrect
+  }));
+
   return {
     question: this.question,
     correct: this.correct,
-    voteCount: this.voteCount,
+    voteCounts: this.voteCount,
     totalVotes: this.totalVotes,
-    votes: this.votes.map(v => ({
-      rollNo: v.rollNo,
-      name: v.name,
-      vote: v.vote,
-      isCorrect: v.isCorrect,
-      timestamp: v.timestamp
-    }))
+    details: details
   };
 };
 
@@ -240,7 +241,7 @@ pollSchema.methods.getStudentResult = function(rollNo) {
   return {
     ready: true,
     voted: true,
-    vote: vote.vote,
+    vote: vote.answer,
     correct: this.correct,
     isCorrect: vote.isCorrect
   };
@@ -281,13 +282,17 @@ pollSchema.statics.createPoll = async function(pollData) {
     throw new Error('A poll is already active');
   }
 
+  const startTime = new Date();
+  const endTime = new Date(startTime.getTime() + parseInt(duration) * 1000);
+
   // Create new poll
   const poll = new this({
     question,
     options,
     correct: correct.toUpperCase(),
     duration: parseInt(duration),
-    startTime: new Date(),
+    startTime: startTime,
+    endTime: endTime,
     active: true
   });
 

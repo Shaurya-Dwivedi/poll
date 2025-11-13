@@ -32,71 +32,92 @@ const PORT = process.env.PORT || 3000;
 // Import models
 const Student = require('./models/Student');
 const User = require('./models/User');
+const Poll = require('./models/Poll');
 
 
-// ✅ Student DB
-const students = {
-  "DDDDDD": { rollNo: "B24CH1038", name: "Shaurya Dwivedi" },
-  "BBBBBB": { rollNo: "B24CI1048", name: "Samruddha Jadhav" },
-  "AAAAAA": { rollNo: "B24EE1009", name: "Atharva Ajmera" },
-  "CCCCCC": { rollNo: "B24EE1035", name: "Kushagra Khare" },
-  "ABCDDD": { rollNo: "B24CM1041", name: "Kunal Singh" }
-};
+// ✅ OLD: Hardcoded student DB (now using MongoDB Student model)
+// ✅ OLD: Poll State (now using MongoDB Poll model)
+// All poll data is now stored in the database
 
-// 🔁 Poll State
-let currentPoll = null;
-let votes = {}; // { rollNo: "A", ... }
-let pollEndTime = 0; // epoch ms
-
-// ✅ Login
-app.post('/validate', (req, res) => {
-  const { code } = req.body;
-  const student = students[code];
-  if (student) {
-    return res.json({ success: true, ...student });
-  } else {
-    return res.status(404).json({ success: false, message: "Invalid code" });
+// ✅ Login - Validate Student Device Code
+app.post('/validate', async (req, res) => {
+  try {
+    const { code } = req.body;
+    
+    if (!code) {
+      return res.status(400).json({ success: false, message: "Device code is required" });
+    }
+    
+    // Find student by device code in database
+    const student = await Student.findByDeviceCode(code);
+    
+    if (student && student.isActive) {
+      return res.json({ 
+        success: true, 
+        rollNo: student.rollNo, 
+        name: student.name,
+        email: student.email,
+        section: student.section,
+        branch: student.branch
+      });
+    } else {
+      return res.status(404).json({ success: false, message: "Invalid code" });
+    }
+  } catch (error) {
+    console.error('❌ Validate error:', error);
+    return res.status(500).json({ success: false, message: "Server error during validation" });
   }
 });
 
-// 🟢 Start Poll
-app.post('/start_poll', (req, res) => {
-  if (currentPoll && Date.now() < pollEndTime) {
-    return res.status(400).json({ success: false, message: 'A poll is already active.' });
+// 🟢 Start Poll - Create new poll in database
+app.post('/start_poll', async (req, res) => {
+  try {
+    // Check if there's already an active poll
+    const activePoll = await Poll.findActivePoll();
+    if (activePoll) {
+      return res.status(400).json({ success: false, message: 'A poll is already active.' });
+    }
+
+    const { question, options, correct, duration } = req.body;
+    
+    if (!question || !options || !correct || !duration || duration <= 0) {
+      return res.status(400).json({ success: false, message: "Missing or invalid fields" });
+    }
+
+    // Create new poll using the Poll model
+    const poll = await Poll.createPoll({
+      question,
+      options,
+      correct,
+      duration: parseInt(duration)
+    });
+
+    console.log("🟢 New poll started:", poll._id);
+    res.json({ success: true, pollId: poll._id });
+  } catch (error) {
+    console.error('❌ Start poll error:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
-
-  const { question, options, correct, duration } = req.body;
-  
-  if (!question || !options || !correct || !duration || duration <= 0) {
-    return res.status(400).json({ error: "Missing or invalid fields" });
-  }
-
-  currentPoll = {
-    question,
-    options,
-    correct,
-    startedAt: Date.now(),
-    duration: parseInt(duration)
-  };
-
-  pollEndTime = Date.now() + (currentPoll.duration * 1000);
-  votes = {};
-
-  console.log("🟢 New poll started:", currentPoll);
-  res.json({ success: true });
 });
 
 // 🔴 End Poll Manually
-app.post('/end_poll', (req, res) => {
-  if (!currentPoll) {
-    return res.status(400).json({ success: false, message: 'No active poll to end.' });
-  }
+app.post('/end_poll', async (req, res) => {
+  try {
+    const activePoll = await Poll.findActivePoll();
+    
+    if (!activePoll) {
+      return res.status(400).json({ success: false, message: 'No active poll to end.' });
+    }
 
-  // Set poll end time to now to immediately end it
-  pollEndTime = Date.now();
-  
-  console.log("🔴 Poll ended manually by instructor");
-  res.json({ success: true, message: 'Poll ended successfully' });
+    // End the poll using the model method
+    await activePoll.endPoll();
+    
+    console.log("🔴 Poll ended manually by instructor:", activePoll._id);
+    res.json({ success: true, message: 'Poll ended successfully' });
+  } catch (error) {
+    console.error('❌ End poll error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 // Instructor clicks "Logout All"
@@ -126,112 +147,193 @@ app.post("/clear_logout_flag", (req, res) => {
 
 
 // 📥 Get Current Poll (ESP32)
-app.get('/poll', (req, res) => {
-  if (!currentPoll) return res.json({ active: false });
+app.get('/poll', async (req, res) => {
+  try {
+    const activePoll = await Poll.findActivePoll();
+    
+    if (!activePoll) {
+      return res.json({ active: false });
+    }
 
-  const now = Date.now();
-  const timeLeft = Math.max(0, Math.floor((pollEndTime - now) / 1000));
-  const isActive = now < pollEndTime;
+    // Check if poll has expired
+    if (activePoll.isExpired()) {
+      return res.json({ active: false });
+    }
 
-  res.json({
-    active: isActive,
-    timeLeft,
-    question: currentPoll.question,
-    options: currentPoll.options
-  });
+    const timeLeft = activePoll.getTimeLeft();
+
+    res.json({
+      active: true,
+      timeLeft,
+      question: activePoll.question,
+      options: activePoll.options
+    });
+  } catch (error) {
+    console.error('❌ Get poll error:', error);
+    res.status(500).json({ active: false, error: error.message });
+  }
 });
 
 // 🗳️ Vote
-app.post('/vote', (req, res) => {
-  const { rollNo, vote } = req.body;
+app.post('/vote', async (req, res) => {
+  try {
+    const { rollNo, vote } = req.body;
 
-  if (!currentPoll || !currentPoll.correct || Date.now() > pollEndTime) {
-    return res.status(400).json({ success: false, message: "Poll has ended" });
+    if (!rollNo || !vote || !['A', 'B', 'C', 'D'].includes(vote)) {
+      return res.status(400).json({ success: false, message: "Invalid vote data" });
+    }
+
+    // Find active poll
+    const activePoll = await Poll.findActivePoll();
+    
+    if (!activePoll) {
+      return res.status(400).json({ success: false, message: "No active poll" });
+    }
+
+    if (activePoll.isExpired()) {
+      return res.status(400).json({ success: false, message: "Poll has ended" });
+    }
+
+    // Find student by roll number
+    const student = await Student.findByRollNo(rollNo);
+    
+    if (!student) {
+      return res.status(404).json({ success: false, message: "Student not found" });
+    }
+
+    // Add vote to poll
+    const result = await activePoll.addVote(student._id, rollNo, student.name, vote);
+    
+    console.log(`✅ Vote from ${rollNo}: ${vote}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Vote error:', error);
+    
+    if (error.message.includes('already voted')) {
+      return res.status(400).json({ success: false, message: "You have already voted." });
+    }
+    
+    res.status(500).json({ success: false, message: error.message });
   }
-
-  if (votes[rollNo]) {
-    return res.status(400).json({ success: false, message: "You have already voted." });
-  }
-
-  if (!rollNo || !vote || !['A', 'B', 'C', 'D'].includes(vote)) {
-    return res.status(400).json({ success: false, message: "Invalid vote data" });
-  }
-
-  votes[rollNo] = vote;
-  console.log(`✅ Vote from ${rollNo}: ${vote}`);
-  res.json({ success: true });
 });
 
 
 // 🧠 Result for a student
-app.get('/student_result', (req, res) => {
-  const { rollNo } = req.query;
+app.get('/student_result', async (req, res) => {
+  try {
+    const { rollNo } = req.query;
 
-  if (!votes[rollNo] || !currentPoll || Date.now() < pollEndTime) {
-    return res.json({ ready: false });
+    if (!rollNo) {
+      return res.status(400).json({ ready: false, message: "Roll number required" });
+    }
+
+    // Find the most recent poll (active or completed)
+    const poll = await Poll.findOne().sort({ createdAt: -1 });
+    
+    if (!poll) {
+      return res.json({ ready: false });
+    }
+
+    // Check if poll has ended
+    if (!poll.isExpired() && poll.active) {
+      return res.json({ ready: false, message: "Poll is still active" });
+    }
+
+    // Find student's vote
+    const studentVote = poll.votes.find(v => v.rollNo === rollNo);
+    
+    if (!studentVote) {
+      return res.json({ ready: false, message: "No vote found" });
+    }
+
+    return res.json({
+      ready: true,
+      voted: studentVote.answer,
+      correct: poll.correct,
+      isCorrect: studentVote.answer === poll.correct
+    });
+  } catch (error) {
+    console.error('❌ Student result error:', error);
+    res.status(500).json({ ready: false, error: error.message });
   }
-
-  const studentVote = votes[rollNo];
-  const correct = currentPoll.correct;
-
-  return res.json({
-    ready: true,
-    voted: studentVote,
-    correct,
-    isCorrect: studentVote === correct
-  });
 });
 
 // 📊 Full Results
-app.get('/results', (req, res) => {
-  const tally = {};
-  const detailed = [];
+app.get('/results', async (req, res) => {
+  try {
+    // Get the most recent poll (active or completed)
+    const poll = await Poll.findOne().sort({ createdAt: -1 });
+    
+    if (!poll) {
+      return res.json({
+        totalVotes: 0,
+        question: "",
+        correctAnswer: "",
+        summary: {},
+        details: []
+      });
+    }
 
-  for (const [rollNo, vote] of Object.entries(votes)) {
-    const isCorrect = currentPoll && vote === currentPoll.correct;
-    const student = Object.values(students).find(s => s.rollNo === rollNo);
+    // Get results using the model method
+    const results = poll.getResults();
 
-    tally[vote] = (tally[vote] || 0) + 1;
-
-    detailed.push({
-      rollNo,
-      name: student?.name || "Unknown",
-      vote,
-      correct: isCorrect
+    return res.json({
+      totalVotes: results.totalVotes,
+      question: poll.question,
+      correctAnswer: poll.correct,
+      summary: results.voteCounts,
+      details: results.details
+    });
+  } catch (error) {
+    console.error('❌ Results error:', error);
+    res.status(500).json({ 
+      totalVotes: 0,
+      question: "",
+      correctAnswer: "",
+      summary: {},
+      details: [],
+      error: error.message 
     });
   }
-
-  return res.json({
-    totalVotes: Object.keys(votes).length,
-    question: currentPoll?.question || "",
-    correctAnswer: currentPoll?.correct || "",
-    summary: tally,
-    details: detailed
-  });
 });
 
 // 📤 Export to CSV
-app.get('/export', (req, res, next) => {
-  if (!currentPoll) return res.status(400).send("No poll");
-
+app.get('/export', async (req, res, next) => {
   try {
-    let csv = "Roll No,Name,Vote,Correct\n";
-    for (const [rollNo, vote] of Object.entries(votes)) {
-        const student = Object.values(students).find(s => s.rollNo === rollNo);
-        const name = student?.name || "Unknown";
-        const isCorrect = vote === currentPoll.correct ? "✅" : "❌";
-        csv += `${rollNo},${name},${vote},${isCorrect}\n`;
+    // Get the most recent poll
+    const poll = await Poll.findOne().sort({ createdAt: -1 });
+    
+    if (!poll) {
+      return res.status(400).send("No poll data available");
     }
 
-    const filePath = __dirname + "/poll_results.csv";
+    // Build CSV content
+    let csv = "Roll No,Name,Vote,Correct\n";
+    
+    for (const vote of poll.votes) {
+      const isCorrect = vote.answer === poll.correct ? "✅" : "❌";
+      csv += `${vote.rollNo},${vote.studentName},${vote.answer},${isCorrect}\n`;
+    }
+
+    // Create temporary file
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileName = `poll_results_${timestamp}.csv`;
+    const filePath = path.join(__dirname, fileName);
+    
     fs.writeFileSync(filePath, csv);
 
-    res.download(filePath, (err) => {
+    res.download(filePath, fileName, (err) => {
+      // Clean up the file after download
+      fs.unlink(filePath, (unlinkErr) => {
+        if (unlinkErr) console.error('Error deleting temp file:', unlinkErr);
+      });
+      
       if (err) {
         next(err);
       }
     });
   } catch (error) {
+    console.error('❌ Export error:', error);
     next(error);
   }
 });
