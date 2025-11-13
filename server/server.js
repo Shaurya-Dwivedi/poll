@@ -33,6 +33,7 @@ const PORT = process.env.PORT || 3000;
 const Student = require('./models/Student');
 const User = require('./models/User');
 const Poll = require('./models/Poll');
+const Attendance = require('./models/Attendance');
 
 
 // ✅ OLD: Hardcoded student DB (now using MongoDB Student model)
@@ -338,6 +339,275 @@ app.get('/export', async (req, res, next) => {
     });
   } catch (error) {
     console.error('❌ Export error:', error);
+    next(error);
+  }
+});
+
+// ============================================================
+// 🎓 ATTENDANCE ENDPOINTS
+// ============================================================
+
+// 🟢 Start Attendance Session
+app.post('/start_attendance', async (req, res) => {
+  try {
+    const { duration, section } = req.body;
+
+    // Validate input
+    const durationNum = parseInt(duration);
+    if (duration === undefined || duration === null || isNaN(durationNum) || durationNum < 1 || durationNum > 60) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Duration must be between 1 and 60 minutes' 
+      });
+    }
+
+    // Check if there's already an active attendance session
+    const activeSession = await Attendance.findActiveSession();
+    if (activeSession) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'An attendance session is already active' 
+      });
+    }
+
+    // Create new attendance session using the model method
+    const session = await Attendance.createSession({
+      duration: durationNum,
+      section: section || 'ALL'
+    });
+
+    console.log(`🟢 Attendance session started: ${session.code} for ${durationNum} minutes`);
+    res.json({ 
+      success: true, 
+      sessionId: session._id,
+      code: session.code,
+      duration: session.duration,
+      endTime: session.endTime
+    });
+  } catch (error) {
+    console.error('❌ Start attendance error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 📥 Get Active Attendance Session (for ESP32)
+app.get('/get_attendance', async (req, res) => {
+  try {
+    const activeSession = await Attendance.findActiveSession();
+
+    if (!activeSession) {
+      return res.json({ active: false });
+    }
+
+    // Check if session has expired
+    if (activeSession.isExpired()) {
+      return res.json({ active: false });
+    }
+
+    const timeLeft = activeSession.getTimeLeft();
+
+    res.json({
+      active: true,
+      code: activeSession.code,
+      timeLeft: timeLeft,
+      duration: activeSession.duration,
+      endTime: activeSession.endTime
+    });
+  } catch (error) {
+    console.error('❌ Get attendance error:', error);
+    res.status(500).json({ active: false, error: error.message });
+  }
+});
+
+// ✅ Mark Attendance
+app.post('/mark_attendance', async (req, res) => {
+  try {
+    const { rollNo, code } = req.body;
+
+    if (!rollNo || !code) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Roll number and code are required' 
+      });
+    }
+
+    // Find active attendance session
+    const activeSession = await Attendance.findActiveSession();
+
+    if (!activeSession) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No active attendance session' 
+      });
+    }
+
+    if (activeSession.isExpired()) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Attendance session has ended' 
+      });
+    }
+
+    // Validate the code
+    if (code !== activeSession.code) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid attendance code' 
+      });
+    }
+
+    // Find student by roll number
+    const student = await Student.findByRollNo(rollNo);
+
+    if (!student) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Student not found' 
+      });
+    }
+
+    // Mark attendance using the model method
+    await activeSession.markAttendance(
+      student._id,
+      student.rollNo,
+      student.name,
+      student.deviceCode || ''
+    );
+
+    console.log(`✅ Attendance marked: ${student.rollNo} - ${student.name}`);
+    res.json({ 
+      success: true,
+      message: 'Attendance marked successfully',
+      student: {
+        rollNo: student.rollNo,
+        name: student.name
+      }
+    });
+  } catch (error) {
+    console.error('❌ Mark attendance error:', error);
+
+    if (error.message.includes('already marked')) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Attendance already marked for this student' 
+      });
+    }
+
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 🔴 End Attendance Session
+app.post('/end_attendance', async (req, res) => {
+  try {
+    const activeSession = await Attendance.findActiveSession();
+
+    if (!activeSession) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No active attendance session to end' 
+      });
+    }
+
+    // End the session using the model method
+    await activeSession.endSession();
+
+    console.log(`🔴 Attendance session ended: ${activeSession.code}`);
+    res.json({ 
+      success: true, 
+      message: 'Attendance session ended successfully' 
+    });
+  } catch (error) {
+    console.error('❌ End attendance error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 📊 Get Attendance Results
+app.get('/attendance_results', async (req, res) => {
+  try {
+    // Get the most recent attendance session (active or completed)
+    const session = await Attendance.findOne().sort({ createdAt: -1 });
+
+    if (!session) {
+      return res.json({
+        active: false,
+        totalPresent: 0,
+        totalAbsent: 0,
+        code: "",
+        records: []
+      });
+    }
+
+    // Get statistics using the model method
+    const stats = session.getStatistics();
+
+    res.json({
+      active: session.active,
+      sessionId: session._id,
+      code: session.code,
+      duration: session.duration,
+      startTime: session.startTime,
+      endTime: session.endTime,
+      totalPresent: stats.totalPresent,
+      totalAbsent: stats.totalAbsent,
+      presentPercentage: stats.presentPercentage,
+      records: session.records.map(r => ({
+        rollNo: r.rollNo,
+        studentName: r.studentName,
+        markedAt: r.markedAt
+      }))
+    });
+  } catch (error) {
+    console.error('❌ Attendance results error:', error);
+    res.status(500).json({
+      active: false,
+      totalPresent: 0,
+      totalAbsent: 0,
+      code: "",
+      records: [],
+      error: error.message
+    });
+  }
+});
+
+// 📤 Export Attendance to CSV
+app.get('/export_attendance', async (req, res, next) => {
+  try {
+    // Get the most recent attendance session
+    const session = await Attendance.findOne().sort({ createdAt: -1 });
+
+    if (!session) {
+      return res.status(400).send("No attendance data available");
+    }
+
+    // Build CSV content
+    let csv = "Roll No,Name,Status,Marked At\n";
+
+    for (const record of session.records) {
+      const markedAt = new Date(record.markedAt).toLocaleString();
+      csv += `${record.rollNo},${record.studentName},Present,${markedAt}\n`;
+    }
+
+    // Create temporary file
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileName = `attendance_${session.code}_${timestamp}.csv`;
+    const filePath = path.join(__dirname, fileName);
+
+    fs.writeFileSync(filePath, csv);
+
+    res.download(filePath, fileName, (err) => {
+      // Clean up the file after download
+      fs.unlink(filePath, (unlinkErr) => {
+        if (unlinkErr) console.error('Error deleting temp file:', unlinkErr);
+      });
+
+      if (err) {
+        next(err);
+      }
+    });
+  } catch (error) {
+    console.error('❌ Export attendance error:', error);
     next(error);
   }
 });

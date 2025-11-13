@@ -64,7 +64,7 @@ const attendanceSchema = new mongoose.Schema({
 
   endTime: {
     type: Date,
-    required: true
+    required: false  // Will be set by pre-save hook or createSession method
   },
 
   // Status
@@ -162,15 +162,10 @@ attendanceSchema.methods.getTimeLeft = function() {
 /**
  * Mark attendance for a student
  */
-attendanceSchema.methods.markAttendance = async function(studentId, rollNo, name, deviceCode, enteredCode) {
+attendanceSchema.methods.markAttendance = async function(studentId, rollNo, studentName, deviceCode = '') {
   // Check if attendance is still active
   if (!this.active || this.isExpired()) {
     throw new Error('Attendance session is not active');
-  }
-
-  // Validate the entered code
-  if (enteredCode.toUpperCase() !== this.code) {
-    throw new Error('Invalid attendance code');
   }
 
   // Check if student already marked attendance
@@ -183,7 +178,7 @@ attendanceSchema.methods.markAttendance = async function(studentId, rollNo, name
   this.records.push({
     student: studentId,
     rollNo: rollNo,
-    name: name,
+    name: studentName,
     deviceCode: deviceCode,
     markedAt: new Date(),
     present: true
@@ -212,6 +207,23 @@ attendanceSchema.methods.getSummary = function() {
       ? ((this.totalPresent / this.totalExpected) * 100).toFixed(2) 
       : 0,
     timeLeft: this.getTimeLeft()
+  };
+};
+
+/**
+ * Get attendance statistics for this session
+ */
+attendanceSchema.methods.getStatistics = function() {
+  const totalAbsent = this.totalExpected - this.totalPresent;
+  const presentPercentage = this.totalExpected > 0 
+    ? ((this.totalPresent / this.totalExpected) * 100).toFixed(2) 
+    : 0;
+
+  return {
+    totalPresent: this.totalPresent,
+    totalAbsent: totalAbsent,
+    totalExpected: this.totalExpected,
+    presentPercentage: presentPercentage
   };
 };
 
@@ -347,11 +359,16 @@ attendanceSchema.statics.createSession = async function(sessionData) {
   }
   const totalExpected = await Student.countDocuments(query);
 
+  // Calculate start and end times
+  const startTime = new Date();
+  const endTime = new Date(startTime.getTime() + parseInt(duration) * 60 * 1000);
+
   // Create new session
   const session = new this({
     code,
     duration: parseInt(duration),
-    startTime: new Date(),
+    startTime: startTime,
+    endTime: endTime,
     active: true,
     section: section || 'ALL',
     notes: notes || '',
