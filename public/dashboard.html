@@ -15,88 +15,87 @@
       overflow: hidden;
     }
     .sidebar {
-      width: 350px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border-right: none;
-      box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+      width: 380px;
+      background: #f8f9fa;
+      border-right: 1px solid #e9ecef;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.05);
       overflow-y: auto;
       transition: all 0.3s ease;
       flex-shrink: 0;
       position: relative;
+      z-index: 1000;
     }
     .sidebar.collapsed {
-      width: 60px;
+      width: 0;
       overflow: hidden;
+      border-right: none;
+      box-shadow: none;
     }
     .sidebar-header {
-      padding: 20px;
-      background: rgba(255,255,255,0.1);
-      backdrop-filter: blur(10px);
-      color: white;
+      padding: 24px 20px;
+      background: #ffffff;
+      border-bottom: 1px solid #e9ecef;
+      color: #343a40;
       position: sticky;
       top: 0;
       z-index: 10;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid rgba(255,255,255,0.2);
     }
     .sidebar-header h6 {
       font-weight: 600;
       margin: 0;
-      font-size: 1.1rem;
+      font-size: 1.2rem;
+      color: #495057;
     }
     .sidebar-header small {
-      opacity: 0.8;
+      color: #6c757d;
       font-size: 0.85rem;
+      font-weight: 400;
     }
     .sidebar-content {
       padding: 15px;
     }
     .history-item {
-      background: rgba(255,255,255,0.15);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 12px;
-      padding: 15px;
+      background: #ffffff;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      padding: 16px;
       margin-bottom: 12px;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: all 0.2s ease;
       position: relative;
-      overflow: hidden;
     }
     .history-item::before {
       content: '';
       position: absolute;
       top: 0;
       left: 0;
-      right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
-      opacity: 0;
-      transition: opacity 0.3s ease;
+      bottom: 0;
+      width: 4px;
+      background: #dee2e6;
+      border-radius: 4px 0 0 4px;
+      transition: background-color 0.2s ease;
     }
     .history-item:hover {
-      background: rgba(255,255,255,0.25);
-      transform: translateX(5px);
-      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+      border-color: #adb5bd;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     .history-item:hover::before {
-      opacity: 1;
+      background: #6c757d;
     }
     .history-item.active {
-      background: rgba(255,255,255,0.3);
-      border-color: rgba(255,255,255,0.4);
-      transform: translateX(8px);
-      box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+      border-color: #495057;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
     .history-item.active::before {
-      opacity: 1;
+      background: #495057;
     }
     .history-question {
       font-weight: 600;
-      font-size: 15px;
-      color: white;
+      font-size: 14px;
+      color: #212529;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       line-clamp: 2;
@@ -107,28 +106,28 @@
     }
     .history-meta {
       font-size: 12px;
-      color: rgba(255,255,255,0.8);
+      color: #6c757d;
       margin-top: 8px;
       display: flex;
       align-items: center;
       gap: 8px;
     }
-    .history-meta::before {
-      content: '📅';
-      font-size: 10px;
-    }
     .history-details {
       display: none;
-      margin-top: 15px;
-      padding-top: 15px;
-      border-top: 1px solid rgba(255,255,255,0.3);
-      animation: fadeIn 0.3s ease;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #e9ecef;
+      background: #f8f9fa;
+      margin: 16px -16px -16px -16px;
+      padding: 16px;
+      border-radius: 0 0 8px 8px;
+      animation: fadeIn 0.2s ease;
     }
     .history-details.expanded {
       display: block;
     }
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-10px); }
+      from { opacity: 0; transform: translateY(-8px); }
       to { opacity: 1; transform: translateY(0); }
     }
     .main-content {
@@ -140,24 +139,24 @@
       position: fixed;
       top: 20px;
       left: 20px;
-      z-index: 1000;
-      border-radius: 50%;
-      width: 50px;
-      height: 50px;
+      z-index: 999;
+      border-radius: 6px;
+      width: 44px;
+      height: 44px;
       padding: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      border: none;
+      background: #495057;
+      border: 1px solid #343a40;
       color: white;
-      font-size: 18px;
-      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
-      transition: all 0.3s ease;
+      font-size: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      transition: all 0.2s ease;
     }
     .toggle-sidebar-btn:hover {
-      transform: scale(1.1);
-      box-shadow: 0 12px 30px rgba(102, 126, 234, 0.4);
+      background: #343a40;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
     .sidebar.collapsed + .main-content .toggle-sidebar-btn {
       left: 20px;
@@ -166,125 +165,112 @@
       margin-bottom: 20px;
     }
     .history-search {
-      margin-bottom: 20px;
-      background: rgba(255,255,255,0.2);
-      border: 1px solid rgba(255,255,255,0.3);
-      border-radius: 25px;
-      padding: 12px 20px;
-      color: white;
+      margin: 0 20px 20px 20px;
+      background: #ffffff;
+      border: 1px solid #ced4da;
+      border-radius: 6px;
+      padding: 10px 14px;
+      color: #495057;
       font-size: 14px;
-      transition: all 0.3s ease;
+      transition: all 0.2s ease;
+      width: calc(100% - 40px);
     }
     .history-search::placeholder {
-      color: rgba(255,255,255,0.6);
+      color: #6c757d;
     }
     .history-search:focus {
       outline: none;
-      background: rgba(255,255,255,0.3);
-      border-color: rgba(255,255,255,0.5);
-      box-shadow: 0 0 20px rgba(255,255,255,0.1);
+      border-color: #495057;
+      box-shadow: 0 0 0 0.2rem rgba(73, 80, 87, 0.25);
     }
     .poll-badge {
       display: inline-flex;
       align-items: center;
-      padding: 4px 12px;
+      padding: 4px 10px;
       font-size: 10px;
       font-weight: 600;
-      border-radius: 20px;
+      border-radius: 4px;
       margin-left: 8px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
     .poll-badge.active {
-      background: linear-gradient(135deg, #4ade80, #16a34a);
+      background: #28a745;
       color: white;
-      box-shadow: 0 2px 10px rgba(74, 222, 128, 0.4);
     }
     .poll-badge.completed {
-      background: linear-gradient(135deg, #64748b, #475569);
+      background: #6c757d;
       color: white;
-      box-shadow: 0 2px 10px rgba(100, 116, 139, 0.3);
     }
     .history-actions {
-      margin-top: 15px;
+      margin-top: 12px;
       display: flex;
       gap: 8px;
     }
     .history-actions button {
-      padding: 8px 14px;
+      padding: 6px 12px;
       font-size: 11px;
-      font-weight: 600;
-      border-radius: 20px;
-      border: none;
-      transition: all 0.3s ease;
+      font-weight: 500;
+      border-radius: 4px;
+      border: 1px solid;
+      transition: all 0.2s ease;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.3px;
     }
     .history-actions .btn-success {
-      background: linear-gradient(135deg, #10b981, #059669);
+      background: #28a745;
+      border-color: #28a745;
       color: white;
-      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
     }
     .history-actions .btn-success:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+      background: #218838;
+      border-color: #1e7e34;
     }
     .history-actions .btn-danger {
-      background: linear-gradient(135deg, #ef4444, #dc2626);
+      background: #dc3545;
+      border-color: #dc3545;
       color: white;
-      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
     }
     .history-actions .btn-danger:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+      background: #c82333;
+      border-color: #bd2130;
     }
     .sidebar-tabs {
       display: flex;
-      background: rgba(255,255,255,0.1);
-      backdrop-filter: blur(5px);
-      margin: 0 15px;
-      border-radius: 12px;
-      padding: 4px;
-      margin-bottom: 20px;
+      background: #ffffff;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      margin: 0 20px 24px 20px;
+      overflow: hidden;
     }
     .sidebar-tab {
       flex: 1;
-      padding: 12px 16px;
+      padding: 14px 16px;
       text-align: center;
       cursor: pointer;
       background-color: transparent;
       border: none;
-      border-radius: 8px;
-      font-weight: 600;
+      border-right: 1px solid #dee2e6;
+      font-weight: 500;
       font-size: 0.9rem;
-      color: rgba(255,255,255,0.7);
-      transition: all 0.3s ease;
+      color: #6c757d;
+      transition: all 0.2s ease;
       position: relative;
     }
+    .sidebar-tab:last-child {
+      border-right: none;
+    }
     .sidebar-tab:hover {
-      background-color: rgba(255,255,255,0.1);
-      color: rgba(255,255,255,0.9);
-      transform: translateY(-1px);
+      background-color: #f8f9fa;
+      color: #495057;
     }
     .sidebar-tab.active {
-      background-color: rgba(255,255,255,0.2);
+      background-color: #495057;
       color: white;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      font-weight: 600;
     }
-    .sidebar-tab::before {
-      content: '';
-      position: absolute;
-      bottom: -2px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 0;
-      height: 2px;
-      background: white;
-      border-radius: 1px;
-      transition: width 0.3s ease;
-    }
-    .sidebar-tab.active::before {
-      width: 20px;
+    .sidebar-tab.active:hover {
+      background-color: #343a40;
     }
     .tab-content {
       display: none;
@@ -304,25 +290,25 @@
           <small id="historyCount">Loading...</small>
         </div>
         <button class="btn btn-sm" onclick="toggleSidebar()" title="Collapse" 
-                style="background: rgba(255,255,255,0.2); color: white; border: none; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;">
-          <span style="font-size: 16px; font-weight: bold;">×</span>
+                style="background: #6c757d; color: white; border: 1px solid #495057; border-radius: 4px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;">
+          <span style="font-size: 14px; font-weight: bold;">×</span>
         </button>
       </div>
       
       <!-- Tabs -->
       <div class="sidebar-tabs">
         <button class="sidebar-tab active" onclick="switchTab('polls')">
-          <span style="margin-right: 6px;">📊</span>Polls
+          Polling History
         </button>
         <button class="sidebar-tab" onclick="switchTab('attendance')">
-          <span style="margin-right: 6px;">👥</span>Attendance
+          Attendance Records
         </button>
       </div>
       
       <!-- Poll History Tab -->
       <div class="sidebar-content tab-content active" id="pollsTab">
         <input type="text" class="form-control form-control-sm history-search" 
-               id="historySearch" placeholder="🔍 Search polls..." 
+               id="historySearch" placeholder="Search polling history..." 
                onkeyup="filterHistory()">
         <div id="historyList"></div>
       </div>
@@ -330,7 +316,7 @@
       <!-- Attendance History Tab -->
       <div class="sidebar-content tab-content" id="attendanceTab">
         <input type="text" class="form-control form-control-sm history-search" 
-               id="attendanceSearch" placeholder="🔍 Search attendance..." 
+               id="attendanceSearch" placeholder="Search attendance records..." 
                onkeyup="filterAttendanceHistory()">
         <div id="attendanceHistoryList"></div>
       </div>
@@ -1319,39 +1305,63 @@
     // Smart refresh logic - preserves expanded states and only refreshes current tab
     setInterval(() => {
       if (currentTab === 'polls') {
-        // Only refresh polls if polls tab is active
-        const wasExpanded = selectedPollId !== null;
+        // Only refresh polls if polls tab is active and preserve expanded state
+        const currentExpandedId = selectedPollId;
         fetch(`${server}/poll_history?limit=50`)
           .then(res => res.json())
           .then(data => {
-            if (data.success) {
+            if (data.success && JSON.stringify(pollHistory) !== JSON.stringify(data.polls)) {
               pollHistory = data.polls;
-              renderHistory(wasExpanded); // Preserve expanded state
+              const preserveExpanded = currentExpandedId !== null;
+              renderHistory(preserveExpanded);
               document.getElementById('historyCount').textContent = 
                 `${data.count} poll${data.count !== 1 ? 's' : ''}`;
+              
+              // Restore expanded state if it was expanded before
+              if (preserveExpanded && currentExpandedId) {
+                setTimeout(() => {
+                  const details = document.getElementById(`details-${currentExpandedId}`);
+                  if (details) {
+                    details.classList.add('expanded');
+                    selectedPollId = currentExpandedId;
+                  }
+                }, 150);
+              }
             }
           })
           .catch(error => {
             console.error('Error refreshing poll history:', error);
           });
       } else if (currentTab === 'attendance') {
-        // Only refresh attendance if attendance tab is active
-        const wasExpanded = selectedAttendanceId !== null;
+        // Only refresh attendance if attendance tab is active and preserve expanded state
+        const currentExpandedId = selectedAttendanceId;
         fetch(`${server}/attendance_history?limit=50`)
           .then(res => res.json())
           .then(data => {
-            if (data.success) {
+            if (data.success && JSON.stringify(attendanceHistory) !== JSON.stringify(data.sessions)) {
               attendanceHistory = data.sessions;
-              renderAttendanceHistory(wasExpanded); // Preserve expanded state
+              const preserveExpanded = currentExpandedId !== null;
+              renderAttendanceHistory(preserveExpanded);
               document.getElementById('historyCount').textContent = 
                 `${data.count} session${data.count !== 1 ? 's' : ''}`;
+              
+              // Restore expanded state if it was expanded before
+              if (preserveExpanded && currentExpandedId) {
+                setTimeout(() => {
+                  const details = document.getElementById(`attd-details-${currentExpandedId}`);
+                  if (details) {
+                    details.classList.add('expanded');
+                    selectedAttendanceId = currentExpandedId;
+                  }
+                }, 150);
+              }
             }
           })
           .catch(error => {
             console.error('Error refreshing attendance history:', error);
           });
       }
-    }, 10000); // Refresh every 10 seconds
+    }, 15000); // Refresh every 15 seconds to reduce frequency
   </script>
       </div> <!-- end container-fluid -->
     </div> <!-- end main-content -->
