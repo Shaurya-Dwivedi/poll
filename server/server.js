@@ -319,6 +319,8 @@ app.get('/poll_history', async (req, res) => {
 
     const history = polls.map(poll => {
       const results = poll.getResults();
+      // Calculate totalVotes from votes array length (in case stored value is not updated)
+      const totalVotes = poll.votes ? poll.votes.length : 0;
       return {
         pollId: poll._id,
         question: poll.question,
@@ -328,7 +330,7 @@ app.get('/poll_history', async (req, res) => {
         createdAt: poll.createdAt,
         startTime: poll.startTime,
         endTime: poll.endTime,
-        totalVotes: results.totalVotes,
+        totalVotes: totalVotes,
         voteCounts: results.voteCounts,
         details: results.details
       };

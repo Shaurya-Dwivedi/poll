@@ -670,7 +670,7 @@ void submitAttendance() {
   http.begin(server + "/mark_attendance");
   http.addHeader("Content-Type", "application/json");
   
-  String payload = "{\"rollNo\":\"" + studentRoll + "\",\"code\":\"" + attendanceCode + "\"}";
+  String payload = "{\"rollNo\":\"" + studentRoll + "\",\"name\":\"" + name +"\",\"code\":\"" + attendanceCode + "\"}";
   Serial.println("Submitting attendance: " + payload);
   
   int httpCode = http.POST(payload);
