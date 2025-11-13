@@ -150,17 +150,39 @@ void setup() {
     lcd.clear();
     lcd.print("WiFi Connected!");
     delay(1500);
+    
+    lcd.clear();
+    lcd.print("Enter Code:     ");
   } else {
     Serial.println("\n❌ WiFi Connection Failed!");
     lcd.clear();
     lcd.print("WiFi Failed!");
     lcd.setCursor(0, 1);
-    lcd.print("Check Config");
-    delay(3000);
+    lcd.print("Press BTN 5 to retry");
+    
+    // Wait for backspace button press to retry WiFi connection
+    bool retryPressed = false;
+    while (!retryPressed) {
+      if (digitalRead(BTN_BACKSPACE) == LOW) {
+        delay(50); // Debounce
+        if (digitalRead(BTN_BACKSPACE) == LOW) {
+          retryPressed = true;
+          
+          lcd.clear();
+          lcd.print("Retrying WiFi...");
+          delay(1000);
+          
+          // Reset WiFi and retry
+          WiFi.disconnect();
+          delay(100);
+          
+          // Restart the WiFi connection process
+          ESP.restart(); // Restart the ESP to reinitialize everything cleanly
+        }
+      }
+      delay(10); // Small delay to prevent excessive polling
+    }
   }
-
-  lcd.clear();
-  lcd.print("Enter Code:     ");
 }
 
 void loop() {
