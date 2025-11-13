@@ -32,3 +32,15 @@ poll_results.csv
 # Temporary files
 tmp_*
 server/models/students list/AY 2024-25 Semester-II Slot System (B.Tech. 1st Year) - Section and Group UG 1st Year.csv
+
+# ========================================
+# ESP32 CONFIGURATION FILES (SENSITIVE)
+# ========================================
+
+# ESP32 config files containing WiFi credentials
+esp_code_UPDATED/config.h
+esp_code/config.h
+
+# Ignore any config files with sensitive data
+**/config.h
+!**/config.h.example

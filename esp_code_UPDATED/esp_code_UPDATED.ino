@@ -1,18 +1,18 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <LiquidCrystal_I2C.h>
+#include "esp_wpa2.h"
+#include "config.h"  // Include configuration file with credentials
 
 // ========================================
-// 🔧 CONFIGURATION - UPDATE THESE VALUES
+// 🔧 CONFIGURATION FROM CONFIG.H
 // ========================================
 
-// WiFi Credentials - Replace with your WiFi network
-const char* ssid = "server";
-const char* password = "chainikhaini123";
-
-// Server URL - Replace with your Render deployment URL
-// Format: https://your-app-name.onrender.com (NO trailing slash!)
-const String server = "https://poll-z8ll.onrender.com";
+// WiFi credentials are now loaded from config.h file
+const char* ssid = WIFI_SSID;
+const char* username = WIFI_USERNAME;
+const char* password = WIFI_PASSWORD;
+const String server = SERVER_URL;
 
 // ========================================
 // END CONFIGURATION
@@ -96,11 +96,47 @@ void setup() {
   lcd.setCursor(0, 0);
   lcd.print("Connecting WiFi     ");
 
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(100);
+
+#if USE_ENTERPRISE_WIFI
+  // Configure for Enterprise WiFi (WPA2-Enterprise)
+  Serial.println("🔧 Configuring WPA2 Enterprise...");
+  Serial.println("📡 SSID: " + String(ssid));
+  Serial.println("👤 Username: " + String(username));
+  
+  esp_wifi_sta_wpa2_ent_set_identity((uint8_t *)username, strlen(username));
+  esp_wifi_sta_wpa2_ent_set_username((uint8_t *)username, strlen(username));
+  esp_wifi_sta_wpa2_ent_set_password((uint8_t *)password, strlen(password));
+  esp_wifi_sta_wpa2_ent_enable();
+  
+  WiFi.begin(ssid);
+  
+  lcd.setCursor(0, 1);
+  lcd.print("Enterprise Mode     ");
+  delay(1000);
+#else
+  // Configure for Regular WiFi
+  Serial.println("🔧 Configuring Regular WiFi...");
+  Serial.println("📡 SSID: " + String(ssid));
+  
   WiFi.begin(ssid, password);
+  
+  lcd.setCursor(0, 1);
+  lcd.print("Regular Mode        ");
+  delay(1000);
+#endif
+  
   int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-    delay(500);
+  int maxAttempts = USE_ENTERPRISE_WIFI ? 30 : 20;
+  int delayTime = USE_ENTERPRISE_WIFI ? 1000 : 500;
+  
+  while (WiFi.status() != WL_CONNECTED && attempts < maxAttempts) {
+    delay(delayTime);
     Serial.print(".");
+    lcd.setCursor(0, 1);
+    lcd.print("Attempt " + String(attempts + 1) + "/" + String(maxAttempts) + "    ");
     attempts++;
   }
 
@@ -138,17 +174,17 @@ void loop() {
     // Show menu instead of automatically waiting for poll
     showMainMenu();
   } else if (inVoting && !voteSent) {
-    if (millis() - lastTimerCheck > 1000) {
+    if (millis() - lastTimerCheck > 5000) {  // Changed from 1000ms to 5000ms (5 seconds)
       checkPollStatus();
       lastTimerCheck = millis();
     }
     handleVoting();
   } else if (voteSent && !showResult) {
-    if (millis() - lastPollTime > 2000) {
+    if (millis() - lastPollTime > 5000) {  // Changed from 2000ms to 5000ms
       fetchResult();
       lastPollTime = millis();
     }
-    if (millis() - lastTimerCheck > 1000) {
+    if (millis() - lastTimerCheck > 5000) {  // Changed from 1000ms to 5000ms
       checkPollStatus();  // keep timer updating
       lastTimerCheck = millis();
     }
@@ -635,7 +671,7 @@ void showMainMenu() {
 
 void handleAttendanceMode() {
   // Check attendance status and display timer
-  if (millis() - lastAttendanceCheck > 1000) {
+  if (millis() - lastAttendanceCheck > 5000) {  // Changed from 1000ms to 5000ms (5 seconds)
     checkAttendanceStatus();
     lastAttendanceCheck = millis();
   }

@@ -1,0 +1,32 @@
+// WiFi Configuration Template
+// Copy this file to config.h and fill in your actual credentials
+
+#ifndef CONFIG_H
+#define CONFIG_H
+
+// ========================================
+// 🔧 WIFI CONFIGURATION 
+// ========================================
+
+// WiFi Configuration - Choose your connection type
+#define USE_ENTERPRISE_WIFI true  // Set to false for regular WiFi
+
+#if USE_ENTERPRISE_WIFI
+  // Enterprise WiFi Configuration (for IITJ_WLAN)
+  const char* WIFI_SSID = "IITJ_WLAN";
+  const char* WIFI_USERNAME = "YOUR_USERNAME_HERE";  // Replace with your student ID
+  const char* WIFI_PASSWORD = "YOUR_PASSWORD_HERE";  // Replace with your password
+#else
+  // Regular WiFi Configuration (fallback)
+  const char* WIFI_SSID = "YOUR_WIFI_NAME";
+  const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
+  // Note: USERNAME not used for regular WiFi
+  const char* WIFI_USERNAME = ""; 
+#endif
+
+// ========================================
+// 🌐 SERVER CONFIGURATION
+// ========================================
+const char* SERVER_URL = "https://your-server-url.onrender.com";
+
+#endif // CONFIG_H

@@ -857,13 +857,16 @@
         });
     }
 
-    function renderHistory() {
+    function renderHistory(preserveExpanded = false) {
       const historyList = document.getElementById('historyList');
       
       if (pollHistory.length === 0) {
         historyList.innerHTML = '<p class="text-muted text-center">No polls yet</p>';
         return;
       }
+      
+      // Store currently expanded poll ID before re-rendering
+      const expandedPollId = preserveExpanded ? selectedPollId : null;
 
       historyList.innerHTML = pollHistory.map(poll => {
         const date = new Date(poll.createdAt);
@@ -906,6 +909,17 @@
           </div>
         `;
       }).join('');
+      
+      // Re-expand the previously expanded poll if preserveExpanded is true
+      if (preserveExpanded && expandedPollId) {
+        setTimeout(() => {
+          const details = document.getElementById(`details-${expandedPollId}`);
+          if (details) {
+            details.classList.add('expanded');
+            selectedPollId = expandedPollId;
+          }
+        }, 100);
+      }
     }
 
     function togglePollDetails(pollId) {
@@ -967,7 +981,12 @@
 
     // ========== TAB SWITCHING ==========
     
+    let currentTab = 'polls'; // Track current active tab
+    
     function switchTab(tabName) {
+      // Store previously expanded item
+      const previouslyExpanded = getCurrentExpandedItem();
+      
       // Update tab buttons
       const tabs = document.querySelectorAll('.sidebar-tab');
       tabs.forEach(tab => tab.classList.remove('active'));
@@ -977,16 +996,36 @@
       const pollsTab = document.getElementById('pollsTab');
       const attendanceTab = document.getElementById('attendanceTab');
       
+      currentTab = tabName; // Update current tab tracker
+      
       if (tabName === 'polls') {
         pollsTab.classList.add('active');
         attendanceTab.classList.remove('active');
         document.getElementById('historyCount').textContent = 
           `${pollHistory.length} poll${pollHistory.length !== 1 ? 's' : ''}`;
+        
+        // Load polls if not loaded or if switching from attendance
+        if (pollHistory.length === 0) {
+          loadPollHistory();
+        }
       } else if (tabName === 'attendance') {
         pollsTab.classList.remove('active');
         attendanceTab.classList.add('active');
         document.getElementById('historyCount').textContent = 
           `${attendanceHistory.length} session${attendanceHistory.length !== 1 ? 's' : ''}`;
+        
+        // Load attendance if not loaded or if switching from polls
+        if (attendanceHistory.length === 0) {
+          loadAttendanceHistory();
+        }
+      }
+    }
+    
+    function getCurrentExpandedItem() {
+      if (currentTab === 'polls') {
+        return selectedPollId;
+      } else {
+        return selectedAttendanceId;
       }
     }
 
@@ -1009,13 +1048,16 @@
         });
     }
 
-    function renderAttendanceHistory() {
+    function renderAttendanceHistory(preserveExpanded = false) {
       const historyList = document.getElementById('attendanceHistoryList');
       
       if (attendanceHistory.length === 0) {
         historyList.innerHTML = '<p class="text-muted text-center">No attendance sessions yet</p>';
         return;
       }
+      
+      // Store currently expanded attendance ID before re-rendering
+      const expandedAttendanceId = preserveExpanded ? selectedAttendanceId : null;
 
       historyList.innerHTML = attendanceHistory.map(session => {
         const date = new Date(session.startTime);
@@ -1063,6 +1105,17 @@
           </div>
         `;
       }).join('');
+      
+      // Re-expand the previously expanded attendance session if preserveExpanded is true
+      if (preserveExpanded && expandedAttendanceId) {
+        setTimeout(() => {
+          const details = document.getElementById(`attd-details-${expandedAttendanceId}`);
+          if (details) {
+            details.classList.add('expanded');
+            selectedAttendanceId = expandedAttendanceId;
+          }
+        }, 100);
+      }
     }
 
     function toggleAttendanceDetails(sessionId) {
@@ -1126,9 +1179,42 @@
     loadPollHistory();
     loadAttendanceHistory();
     
-    // Refresh history every 10 seconds
-    setInterval(loadPollHistory, 10000);
-    setInterval(loadAttendanceHistory, 10000);
+    // Smart refresh logic - preserves expanded states and only refreshes current tab
+    setInterval(() => {
+      if (currentTab === 'polls') {
+        // Only refresh polls if polls tab is active
+        const wasExpanded = selectedPollId !== null;
+        fetch(`${server}/poll_history?limit=50`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              pollHistory = data.polls;
+              renderHistory(wasExpanded); // Preserve expanded state
+              document.getElementById('historyCount').textContent = 
+                `${data.count} poll${data.count !== 1 ? 's' : ''}`;
+            }
+          })
+          .catch(error => {
+            console.error('Error refreshing poll history:', error);
+          });
+      } else if (currentTab === 'attendance') {
+        // Only refresh attendance if attendance tab is active
+        const wasExpanded = selectedAttendanceId !== null;
+        fetch(`${server}/attendance_history?limit=50`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              attendanceHistory = data.sessions;
+              renderAttendanceHistory(wasExpanded); // Preserve expanded state
+              document.getElementById('historyCount').textContent = 
+                `${data.count} session${data.count !== 1 ? 's' : ''}`;
+            }
+          })
+          .catch(error => {
+            console.error('Error refreshing attendance history:', error);
+          });
+      }
+    }, 10000); // Refresh every 10 seconds
   </script>
       </div> <!-- end container-fluid -->
     </div> <!-- end main-content -->
