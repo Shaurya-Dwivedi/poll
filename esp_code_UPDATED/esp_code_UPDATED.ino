@@ -294,17 +294,34 @@ void validateCode() {
       lcd.print(name);
       delay(2000);
 
+      // Show loading transition
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Loading Menu...    ");
+      lcd.setCursor(0, 1);
+      lcd.print("Please wait...     ");
+      delay(1500);
+
       // Don't automatically start voting, show menu instead
       inVoting = false;
       voteSent = false;
       showResult = false;
       selectedVote = '\0';
       lastLCDMessage = ""; // Clear to force menu render
+      
+      // Clear the code and don't go back to "Enter Code:"
+      code = "";
+      http.end();
+      return; // Exit validateCode() without going to "Enter Code:" again
     } else {
       Serial.println("❌ Invalid code");
       lcd.clear();
       lcd.print("Invalid Code          ");
       delay(2000);
+      // Reset and show "Enter Code:" again for invalid codes
+      code = "";
+      lcd.clear();
+      lcd.print("Enter Code:        ");
     }
   } else {
     Serial.println("❌ HTTP Error: " + String(httpCode));
@@ -313,11 +330,12 @@ void validateCode() {
     lcd.setCursor(0, 1);
     lcd.print("Code: " + String(httpCode));
     delay(2000);
+    // Reset and show "Enter Code:" again for server errors
+    code = "";
+    lcd.clear();
+    lcd.print("Enter Code:        ");
   }
   http.end();
-  code = "";
-  lcd.clear();
-  lcd.print("Enter Code:        ");
 }
 
 void checkPollStatus() {

@@ -15,20 +15,23 @@
       overflow: hidden;
     }
     .sidebar {
-      width: 300px;
-      background-color: #ffffff;
-      border-right: 2px solid #dee2e6;
+      width: 350px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-right: none;
+      box-shadow: 4px 0 20px rgba(0,0,0,0.1);
       overflow-y: auto;
-      transition: width 0.3s;
+      transition: all 0.3s ease;
       flex-shrink: 0;
+      position: relative;
     }
     .sidebar.collapsed {
-      width: 0;
+      width: 60px;
       overflow: hidden;
     }
     .sidebar-header {
-      padding: 15px;
-      background-color: #0d6efd;
+      padding: 20px;
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
       color: white;
       position: sticky;
       top: 0;
@@ -36,49 +39,97 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+    }
+    .sidebar-header h6 {
+      font-weight: 600;
+      margin: 0;
+      font-size: 1.1rem;
+    }
+    .sidebar-header small {
+      opacity: 0.8;
+      font-size: 0.85rem;
     }
     .sidebar-content {
-      padding: 10px;
+      padding: 15px;
     }
     .history-item {
-      background-color: #f8f9fa;
-      border: 1px solid #dee2e6;
-      border-radius: 5px;
-      padding: 10px;
-      margin-bottom: 10px;
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 12px;
       cursor: pointer;
-      transition: background-color 0.2s;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .history-item::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
+      opacity: 0;
+      transition: opacity 0.3s ease;
     }
     .history-item:hover {
-      background-color: #e9ecef;
+      background: rgba(255,255,255,0.25);
+      transform: translateX(5px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    .history-item:hover::before {
+      opacity: 1;
     }
     .history-item.active {
-      background-color: #cfe2ff;
-      border-color: #0d6efd;
+      background: rgba(255,255,255,0.3);
+      border-color: rgba(255,255,255,0.4);
+      transform: translateX(8px);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+    }
+    .history-item.active::before {
+      opacity: 1;
     }
     .history-question {
-      font-weight: 500;
-      font-size: 14px;
-      color: #212529;
+      font-weight: 600;
+      font-size: 15px;
+      color: white;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
+      line-height: 1.4;
+      margin-bottom: 8px;
     }
     .history-meta {
       font-size: 12px;
-      color: #6c757d;
-      margin-top: 5px;
+      color: rgba(255,255,255,0.8);
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .history-meta::before {
+      content: '📅';
+      font-size: 10px;
     }
     .history-details {
       display: none;
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid #dee2e6;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(255,255,255,0.3);
+      animation: fadeIn 0.3s ease;
     }
     .history-details.expanded {
       display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     .main-content {
       flex: 1;
@@ -88,71 +139,152 @@
     .toggle-sidebar-btn {
       position: fixed;
       top: 20px;
-      left: 10px;
+      left: 20px;
       z-index: 1000;
       border-radius: 50%;
-      width: 40px;
-      height: 40px;
+      width: 50px;
+      height: 50px;
       padding: 0;
       display: flex;
       align-items: center;
       justify-content: center;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border: none;
+      color: white;
+      font-size: 18px;
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+      transition: all 0.3s ease;
+    }
+    .toggle-sidebar-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 12px 30px rgba(102, 126, 234, 0.4);
     }
     .sidebar.collapsed + .main-content .toggle-sidebar-btn {
-      left: 10px;
+      left: 20px;
     }
     .card {
       margin-bottom: 20px;
     }
     .history-search {
-      margin-bottom: 10px;
+      margin-bottom: 20px;
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 25px;
+      padding: 12px 20px;
+      color: white;
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
+    .history-search::placeholder {
+      color: rgba(255,255,255,0.6);
+    }
+    .history-search:focus {
+      outline: none;
+      background: rgba(255,255,255,0.3);
+      border-color: rgba(255,255,255,0.5);
+      box-shadow: 0 0 20px rgba(255,255,255,0.1);
     }
     .poll-badge {
-      display: inline-block;
-      padding: 2px 8px;
-      font-size: 11px;
-      border-radius: 3px;
-      margin-left: 5px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 12px;
+      font-size: 10px;
+      font-weight: 600;
+      border-radius: 20px;
+      margin-left: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     .poll-badge.active {
-      background-color: #198754;
+      background: linear-gradient(135deg, #4ade80, #16a34a);
       color: white;
+      box-shadow: 0 2px 10px rgba(74, 222, 128, 0.4);
     }
     .poll-badge.completed {
-      background-color: #6c757d;
+      background: linear-gradient(135deg, #64748b, #475569);
       color: white;
+      box-shadow: 0 2px 10px rgba(100, 116, 139, 0.3);
     }
     .history-actions {
-      margin-top: 8px;
+      margin-top: 15px;
       display: flex;
-      gap: 5px;
+      gap: 8px;
     }
     .history-actions button {
-      padding: 3px 8px;
+      padding: 8px 14px;
       font-size: 11px;
+      font-weight: 600;
+      border-radius: 20px;
+      border: none;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .history-actions .btn-success {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    }
+    .history-actions .btn-success:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    }
+    .history-actions .btn-danger {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: white;
+      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+    }
+    .history-actions .btn-danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
     }
     .sidebar-tabs {
       display: flex;
-      background-color: #f8f9fa;
-      border-bottom: 1px solid #dee2e6;
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(5px);
+      margin: 0 15px;
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 20px;
     }
     .sidebar-tab {
       flex: 1;
-      padding: 10px;
+      padding: 12px 16px;
       text-align: center;
       cursor: pointer;
       background-color: transparent;
       border: none;
-      font-weight: 500;
-      color: #6c757d;
-      transition: all 0.2s;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.7);
+      transition: all 0.3s ease;
+      position: relative;
     }
     .sidebar-tab:hover {
-      background-color: #e9ecef;
+      background-color: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.9);
+      transform: translateY(-1px);
     }
     .sidebar-tab.active {
-      background-color: #0d6efd;
+      background-color: rgba(255,255,255,0.2);
       color: white;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .sidebar-tab::before {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 2px;
+      background: white;
+      border-radius: 1px;
+      transition: width 0.3s ease;
+    }
+    .sidebar-tab.active::before {
+      width: 20px;
     }
     .tab-content {
       display: none;
@@ -171,21 +303,26 @@
           <h6 class="mb-0">History</h6>
           <small id="historyCount">Loading...</small>
         </div>
-        <button class="btn btn-sm btn-light" onclick="toggleSidebar()" title="Collapse">
-          &times;
+        <button class="btn btn-sm" onclick="toggleSidebar()" title="Collapse" 
+                style="background: rgba(255,255,255,0.2); color: white; border: none; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;">
+          <span style="font-size: 16px; font-weight: bold;">×</span>
         </button>
       </div>
       
       <!-- Tabs -->
       <div class="sidebar-tabs">
-        <button class="sidebar-tab active" onclick="switchTab('polls')">Polls</button>
-        <button class="sidebar-tab" onclick="switchTab('attendance')">Attendance</button>
+        <button class="sidebar-tab active" onclick="switchTab('polls')">
+          <span style="margin-right: 6px;">📊</span>Polls
+        </button>
+        <button class="sidebar-tab" onclick="switchTab('attendance')">
+          <span style="margin-right: 6px;">👥</span>Attendance
+        </button>
       </div>
       
       <!-- Poll History Tab -->
       <div class="sidebar-content tab-content active" id="pollsTab">
         <input type="text" class="form-control form-control-sm history-search" 
-               id="historySearch" placeholder="Search polls..." 
+               id="historySearch" placeholder="🔍 Search polls..." 
                onkeyup="filterHistory()">
         <div id="historyList"></div>
       </div>
@@ -193,7 +330,7 @@
       <!-- Attendance History Tab -->
       <div class="sidebar-content tab-content" id="attendanceTab">
         <input type="text" class="form-control form-control-sm history-search" 
-               id="attendanceSearch" placeholder="Search attendance..." 
+               id="attendanceSearch" placeholder="🔍 Search attendance..." 
                onkeyup="filterAttendanceHistory()">
         <div id="attendanceHistoryList"></div>
       </div>
